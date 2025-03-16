@@ -1,81 +1,95 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { TokenPrice, PriceResponse } from '@common/types/price.types';
-import { ChainId } from '@common/constants/chains.constants';
+import { TokenPrice, PriceResponse } from '@exchange/types/price.types';
+import { ChainId } from '@exchange/constants/chains.constants';
+import { DataStoreService } from '@datastore/datastore.service';
 
 @Injectable()
 export class PricesService {
   private readonly logger = new Logger(PricesService.name);
-  private pricesByChain: Map<ChainId, Map<string, TokenPrice>> = new Map();
-  private lastUpdatedByChain: Map<ChainId, number> = new Map();
-  
-  // Cache TTL in milliseconds (5 minutes)
-  private readonly CACHE_TTL = 5 * 60 * 1000;
+  private readonly NAMESPACE = 'prices';
+  private readonly PRICE_TTL = 5 * 60 * 1000; // 5 minutes
 
-  constructor() {
-    // Initialize price maps
-    Object.values(ChainId).forEach(chainId => {
-      if (typeof chainId === 'number') {
-        this.pricesByChain.set(chainId, new Map());
-        this.lastUpdatedByChain.set(chainId, 0);
-      }
-    });
-  }
+  constructor(private readonly dataStoreService: DataStoreService) {}
 
   async getPrices(chainId: ChainId): Promise<PriceResponse> {
+    const key = `chain:${chainId}:prices`;
     const now = Date.now();
-    const lastUpdated = this.lastUpdatedByChain.get(chainId) || 0;
     
-    // Check if cache is stale
-    if (now - lastUpdated > this.CACHE_TTL) {
-      await this.updatePricesForChain(chainId);
-    }
-    
-    const prices = this.pricesByChain.get(chainId) || new Map();
-    const priceObj: Record<string, TokenPrice> = {};
-    
-    prices.forEach((price, address) => {
-      priceObj[address] = price;
-    });
-    
-    return {
-      prices: priceObj,
-      updatedAt: this.lastUpdatedByChain.get(chainId) || now,
-    };
+    return this.dataStoreService.getOrSet<PriceResponse>(
+      key,
+      async () => {
+        const prices = await this.fetchPrices(chainId);
+        const priceObj: Record<string, TokenPrice> = {};
+        
+        for (const price of prices) {
+          const normalizedAddress = this.normalizeAddress(price.address, chainId);
+          priceObj[normalizedAddress] = price;
+          
+          // Also store individual price for faster lookups
+          await this.dataStoreService.set(
+            `chain:${chainId}:price:${normalizedAddress}`,
+            price,
+            { namespace: this.NAMESPACE, ttl: this.PRICE_TTL }
+          );
+        }
+        
+        return {
+          prices: priceObj,
+          updatedAt: now,
+        };
+      },
+      { namespace: this.NAMESPACE, ttl: this.PRICE_TTL }
+    );
   }
 
   async getPrice(chainId: ChainId, address: string): Promise<TokenPrice | null> {
     const normalizedAddress = this.normalizeAddress(address, chainId);
-    const now = Date.now();
-    const lastUpdated = this.lastUpdatedByChain.get(chainId) || 0;
+    const key = `chain:${chainId}:price:${normalizedAddress}`;
     
-    // Check if cache is stale
-    if (now - lastUpdated > this.CACHE_TTL) {
-      await this.updatePricesForChain(chainId);
-    }
-    
-    return this.pricesByChain.get(chainId)?.get(normalizedAddress) || null;
+    return this.dataStoreService.getOrSet<TokenPrice | null>(
+      key,
+      async () => {
+        // If individual price is not cached, try to get from all prices
+        const priceResponse = await this.getPrices(chainId);
+        return priceResponse.prices[normalizedAddress] || null;
+      },
+      { namespace: this.NAMESPACE, ttl: this.PRICE_TTL }
+    );
   }
 
-  async updatePricesForChain(chainId: ChainId): Promise<void> {
-    try {
-      // This is a placeholder - in the real implementation, 
-      // we would fetch from an external API or source
-      const prices = await this.fetchPrices(chainId);
+  async refreshPrices(chainId: ChainId): Promise<PriceResponse> {
+    const now = Date.now();
+    const prices = await this.fetchPrices(chainId);
+    const priceObj: Record<string, TokenPrice> = {};
+    
+    // Store the prices response
+    const response: PriceResponse = {
+      prices: priceObj,
+      updatedAt: now,
+    };
+    
+    // Store individual prices
+    await Promise.all(prices.map(async (price) => {
+      const normalizedAddress = this.normalizeAddress(price.address, chainId);
+      priceObj[normalizedAddress] = price;
       
-      const priceMap = new Map<string, TokenPrice>();
-      prices.forEach(price => {
-        const normalizedAddress = this.normalizeAddress(price.address, chainId);
-        priceMap.set(normalizedAddress, price);
-      });
-      
-      this.pricesByChain.set(chainId, priceMap);
-      this.lastUpdatedByChain.set(chainId, Date.now());
-      
-      this.logger.log(`Updated ${priceMap.size} prices for chain ${chainId}`);
-    } catch (error) {
-      this.logger.error(`Failed to update prices for chain ${chainId}: ${error.message}`);
-      throw error;
-    }
+      const priceKey = `chain:${chainId}:price:${normalizedAddress}`;
+      await this.dataStoreService.set(
+        priceKey,
+        price,
+        { namespace: this.NAMESPACE, ttl: this.PRICE_TTL }
+      );
+    }));
+    
+    // Store all prices
+    const allPricesKey = `chain:${chainId}:prices`;
+    await this.dataStoreService.set(
+      allPricesKey,
+      response,
+      { namespace: this.NAMESPACE, ttl: this.PRICE_TTL }
+    );
+    
+    return response;
   }
 
   private async fetchPrices(chainId: ChainId): Promise<TokenPrice[]> {

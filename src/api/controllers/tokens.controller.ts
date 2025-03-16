@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query, ParseIntPipe } from '@nestjs/common';
 import { TokensService } from '@services/tokens/tokens.service';
-import { Token } from '@common/types/token.types';
-import { ChainId } from '@common/constants/chains.constants';
+import { Token } from 'packages/exchange/types/token.types';
+import { ChainId } from 'packages/exchange/constants/chains.constants';
 
 @Controller('tokens')
 export class TokensController {
