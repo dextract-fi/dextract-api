@@ -12,6 +12,7 @@ The Dextract API is built with a modular, cloud-native architecture designed for
 - **Runtime**: Cloudflare Workers
 - **Storage**: Cloudflare KV for caching
 - **Language**: TypeScript
+- **Documentation**: Swagger/OpenAPI
 - **Design Pattern**: Modular, service-oriented architecture
 
 ### Architecture Diagram
@@ -61,6 +62,7 @@ dextract-api/
 ├── src/                      # Main source code
 │   ├── api/                  # API layer
 │   │   ├── controllers/      # API endpoints 
+│   │   ├── dto/              # Data Transfer Objects
 │   │   ├── middleware/       # Request/response middleware
 │   │   ├── routes/           # API route definitions
 │   │   └── validators/       # Request validation
@@ -177,6 +179,43 @@ classDiagram
     Decorator <|-- CacheDecorator
     CacheDecorator o-- Service
 ```
+
+## API Documentation
+
+The API provides comprehensive documentation using Swagger/OpenAPI, which allows for:
+
+- Interactive API exploration
+- Request/response schema visualization
+- API testing directly from the browser
+- Automatic client generation
+
+### Accessing the API Documentation
+
+When running the API locally, the Swagger UI is available at:
+
+```
+http://localhost:3000/api/docs
+```
+
+### Generating Documentation Files
+
+You can generate static documentation files using the following commands:
+
+```bash
+# Generate API documentation
+npm run docs:generate
+
+# Serve documentation locally
+npm run docs:serve
+
+# List all API endpoints with their definitions
+npm run api:list
+```
+
+This will create:
+- `docs/api-endpoints.json` - JSON file with all endpoints
+- `docs/openapi-spec.json` - Complete OpenAPI specification
+- `docs/api-docs.md` - Markdown documentation
 
 ## API Endpoints
 
@@ -356,7 +395,20 @@ npm test
 
 # Build for production
 npm run build
+
+# Generate API documentation
+npm run docs:generate
 ```
+
+### API Documentation for Frontend Developers
+
+For frontend developers who need to integrate with the API:
+
+1. Access the interactive Swagger UI at `http://localhost:3000/api/docs`
+2. Use the generated OpenAPI specification (`docs/openapi-spec.json`) to generate client code
+3. Reference the markdown documentation (`docs/api-docs.md`) for a comprehensive API reference
+
+Tools like Postman, Insomnia, or OpenAPI Generator can automatically generate client code from the OpenAPI specification.
 
 ### Deployment to Cloudflare Workers
 

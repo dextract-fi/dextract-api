@@ -1,3 +1,4 @@
+import { KVNamespace } from '@cloudflare/workers-types';
 import { Injectable, Logger } from '@nestjs/common';
 import { DataStore, DataStoreOptions, DataStoreValue } from '@common/types/datastore.types';
 
