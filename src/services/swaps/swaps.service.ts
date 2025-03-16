@@ -1,16 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SwapQuote, SwapRoute } from '@common/types/swap.types';
-import { ChainId } from '@common/constants/chains.constants';
+import { SwapQuote, SwapRoute } from '@exchange/types/swap.types';
+import { ChainId } from '@exchange/constants/chains.constants';
 import { TokensService } from '@services/tokens/tokens.service';
 import { PricesService } from '@services/prices/prices.service';
+import { DataStoreService } from '@datastore/datastore.service';
 
 @Injectable()
 export class SwapsService {
   private readonly logger = new Logger(SwapsService.name);
+  private readonly NAMESPACE = 'swaps';
+  private readonly QUOTE_TTL = 30 * 1000; // 30 seconds
 
   constructor(
     private readonly tokensService: TokensService,
     private readonly pricesService: PricesService,
+    private readonly dataStoreService: DataStoreService,
   ) {}
 
   async getQuote(
@@ -19,49 +23,52 @@ export class SwapsService {
     toToken: string,
     amount: string,
   ): Promise<SwapQuote> {
-    try {
-      this.logger.log(`Getting quote for ${amount} ${fromToken} to ${toToken} on chain ${chainId}`);
-      
-      // Validate tokens exist
-      const sourceToken = await this.tokensService.getToken(chainId, fromToken);
-      const destinationToken = await this.tokensService.getToken(chainId, toToken);
-      
-      if (!sourceToken || !destinationToken) {
-        throw new Error('One or both tokens not found');
-      }
-      
-      // This is a placeholder - in a real implementation, 
-      // we would fetch quotes from various sources/DEXes
-      const routes = await this.fetchRoutes(
-        chainId,
-        sourceToken.address,
-        destinationToken.address,
-        amount,
-      );
-      
-      if (routes.length === 0) {
-        throw new Error('No routes found');
-      }
-      
-      // Find the best route (highest toAmount)
-      const bestRoute = routes.reduce((best, current) => {
-        const bestAmount = BigInt(best.toAmount);
-        const currentAmount = BigInt(current.toAmount);
-        return currentAmount > bestAmount ? current : best;
-      });
-      
-      return {
-        routes,
-        bestRoute,
-        fromToken: sourceToken.address,
-        toToken: destinationToken.address,
-        fromAmount: amount,
-        updatedAt: Date.now(),
-      };
-    } catch (error) {
-      this.logger.error(`Failed to get quote: ${error.message}`);
-      throw error;
-    }
+    this.logger.log(`Getting quote for ${amount} ${fromToken} to ${toToken} on chain ${chainId}`);
+    
+    // Use a deterministic key for caching based on all parameters
+    const key = `chain:${chainId}:quote:${fromToken}:${toToken}:${amount}`;
+    
+    return this.dataStoreService.getOrSet<SwapQuote>(
+      key,
+      async () => {
+        // Validate tokens exist
+        const sourceToken = await this.tokensService.getToken(chainId, fromToken);
+        const destinationToken = await this.tokensService.getToken(chainId, toToken);
+        
+        if (!sourceToken || !destinationToken) {
+          throw new Error('One or both tokens not found');
+        }
+        
+        // Fetch routes
+        const routes = await this.fetchRoutes(
+          chainId,
+          sourceToken.address,
+          destinationToken.address,
+          amount,
+        );
+        
+        if (routes.length === 0) {
+          throw new Error('No routes found');
+        }
+        
+        // Find the best route (highest toAmount)
+        const bestRoute = routes.reduce((best, current) => {
+          const bestAmount = BigInt(best.toAmount);
+          const currentAmount = BigInt(current.toAmount);
+          return currentAmount > bestAmount ? current : best;
+        });
+        
+        return {
+          routes,
+          bestRoute,
+          fromToken: sourceToken.address,
+          toToken: destinationToken.address,
+          fromAmount: amount,
+          updatedAt: Date.now(),
+        };
+      },
+      { namespace: this.NAMESPACE, ttl: this.QUOTE_TTL }
+    );
   }
 
   private async fetchRoutes(

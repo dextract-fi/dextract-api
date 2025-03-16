@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query, ParseIntPipe } from '@nestjs/common';
 import { SwapsService } from '@services/swaps/swaps.service';
-import { SwapQuote } from '@common/types/swap.types';
-import { ChainId } from '@common/constants/chains.constants';
+import { SwapQuote } from 'packages/exchange/types/swap.types';
+import { ChainId } from 'packages/exchange/constants/chains.constants';
 
 @Controller('swaps')
 export class SwapsController {

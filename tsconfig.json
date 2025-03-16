@@ -17,6 +17,10 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./node_modules/@cloudflare/workers-types"
+    ],
     "paths": {
       "@app/*": ["src/*"],
       "@api/*": ["src/api/*"],
@@ -26,7 +30,9 @@
       "@config/*": ["src/config/*"],
       "@common/*": ["packages/common/*"],
       "@api-client/*": ["packages/api-client/*"],
-      "@blockchain/*": ["packages/blockchain/*"]
+      "@blockchain/*": ["packages/blockchain/*"],
+      "@datastore/*": ["src/datastore/*"],
+      "@exchange/*": ["packages/exchange/*"]
     }
   }
 }

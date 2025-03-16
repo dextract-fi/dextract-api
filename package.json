@@ -24,10 +24,12 @@
     "@nestjs/core": "^11.0.11",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/platform-fastify": "^11.0.11",
+    "@nestjs/schedule": "^5.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20230928.0",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
@@ -60,7 +62,7 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
+    "rootDir": ".",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
@@ -68,7 +70,23 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src/"
+    ],
+    "moduleNameMapper": {
+      "^@app/(.*)$": "<rootDir>/src/$1",
+      "^@api/(.*)$": "<rootDir>/src/api/$1",
+      "^@services/(.*)$": "<rootDir>/src/services/$1",
+      "^@workers/(.*)$": "<rootDir>/src/workers/$1",
+      "^@utils/(.*)$": "<rootDir>/src/utils/$1",
+      "^@config/(.*)$": "<rootDir>/src/config/$1",
+      "^@common/(.*)$": "<rootDir>/packages/common/$1",
+      "^@api-client/(.*)$": "<rootDir>/packages/api-client/$1",
+      "^@blockchain/(.*)$": "<rootDir>/packages/blockchain/$1",
+      "^@datastore/(.*)$": "<rootDir>/src/datastore/$1",
+      "^@exchange/(.*)$": "<rootDir>/packages/exchange/$1"
+    }
   }
 }

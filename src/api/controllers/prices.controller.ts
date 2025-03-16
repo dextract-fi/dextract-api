@@ -1,7 +1,7 @@
 import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { PricesService } from '@services/prices/prices.service';
-import { PriceResponse, TokenPrice } from '@common/types/price.types';
-import { ChainId } from '@common/constants/chains.constants';
+import { PriceResponse, TokenPrice } from 'packages/exchange/types/price.types';
+import { ChainId } from 'packages/exchange/constants/chains.constants';
 
 @Controller('prices')
 export class PricesController {
