@@ -1,0 +1,27 @@
+FROM node:23-alpine
+
+# Set trusted certificates if needed
+# RUN update-ca-certificates
+
+# Skip Python and build dependencies for now since we're having issues
+# We'll focus on getting the JS dependencies working first
+
+# Enable corepack and install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+# Copy package files first (for better caching)
+COPY package.json ./
+
+# Install dependencies without frozen lockfile to allow resolution flexibility
+RUN pnpm install
+
+# Copy the rest of the application
+COPY . .
+
+# Expose API port
+EXPOSE 3001
+
+# Start the application
+CMD ["pnpm", "start:dev"]

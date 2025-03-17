@@ -26,7 +26,7 @@ async function bootstrap() {
   // Setup Swagger
   setupSwagger(app);
 
-  await app.listen(3000, '0.0.0.0');
+  await app.listen(3001, '0.0.0.0');
   console.log(`Application is running on: ${await app.getUrl()}`);
   console.log(`Swagger documentation is available at: ${await app.getUrl()}/api/docs`);
 }
