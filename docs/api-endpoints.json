@@ -1,0 +1,235 @@
+[
+  {
+    "path": "/",
+    "method": "GET",
+    "summary": "",
+    "description": "",
+    "parameters": [],
+    "requestBody": null,
+    "responses": {
+      "200": {
+        "description": ""
+      }
+    }
+  },
+  {
+    "path": "/tokens/{chainId}",
+    "method": "GET",
+    "summary": "Get all tokens for a specific chain",
+    "description": "",
+    "parameters": [
+      {
+        "name": "chainId",
+        "in": "path",
+        "required": true,
+        "description": "Chain ID",
+        "schema": {
+          "example": 1,
+          "type": "number"
+        }
+      }
+    ],
+    "requestBody": null,
+    "responses": {
+      "200": {
+        "description": "Returns an array of tokens",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/TokenDto"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "path": "/tokens/{chainId}/{address}",
+    "method": "GET",
+    "summary": "Get a specific token by address",
+    "description": "",
+    "parameters": [
+      {
+        "name": "chainId",
+        "in": "path",
+        "required": true,
+        "description": "Chain ID",
+        "schema": {
+          "example": 1,
+          "type": "number"
+        }
+      },
+      {
+        "name": "address",
+        "in": "path",
+        "required": true,
+        "description": "Token address",
+        "schema": {
+          "example": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": null,
+    "responses": {
+      "200": {
+        "description": "Returns token information",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/TokenDto"
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Token not found"
+      }
+    }
+  },
+  {
+    "path": "/prices/{chainId}",
+    "method": "GET",
+    "summary": "Get all token prices for a specific chain",
+    "description": "",
+    "parameters": [
+      {
+        "name": "chainId",
+        "in": "path",
+        "required": true,
+        "description": "Chain ID",
+        "schema": {
+          "example": 1,
+          "type": "number"
+        }
+      }
+    ],
+    "requestBody": null,
+    "responses": {
+      "200": {
+        "description": "Returns all token prices",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PriceResponseDto"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "path": "/prices/{chainId}/{address}",
+    "method": "GET",
+    "summary": "Get price for a specific token",
+    "description": "",
+    "parameters": [
+      {
+        "name": "chainId",
+        "in": "path",
+        "required": true,
+        "description": "Chain ID",
+        "schema": {
+          "example": 1,
+          "type": "number"
+        }
+      },
+      {
+        "name": "address",
+        "in": "path",
+        "required": true,
+        "description": "Token address",
+        "schema": {
+          "example": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": null,
+    "responses": {
+      "200": {
+        "description": "Returns token price information",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/TokenPriceDto"
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Token price not found"
+      }
+    }
+  },
+  {
+    "path": "/swaps/quote/{chainId}",
+    "method": "GET",
+    "summary": "Get swap quote",
+    "description": "",
+    "parameters": [
+      {
+        "name": "chainId",
+        "in": "path",
+        "required": true,
+        "description": "Chain ID",
+        "schema": {
+          "example": 1,
+          "type": "number"
+        }
+      },
+      {
+        "name": "fromToken",
+        "in": "query",
+        "required": true,
+        "description": "Source token address",
+        "schema": {
+          "example": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "type": "string"
+        }
+      },
+      {
+        "name": "toToken",
+        "in": "query",
+        "required": true,
+        "description": "Destination token address",
+        "schema": {
+          "example": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "type": "string"
+        }
+      },
+      {
+        "name": "amount",
+        "in": "query",
+        "required": true,
+        "description": "Amount of source token to swap (in wei/lamports)",
+        "schema": {
+          "example": "1000000000",
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": null,
+    "responses": {
+      "200": {
+        "description": "Returns swap quote information",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/SwapQuoteDto"
+            }
+          }
+        }
+      },
+      "400": {
+        "description": "Invalid parameters"
+      },
+      "404": {
+        "description": "No routes found"
+      }
+    }
+  }
+]

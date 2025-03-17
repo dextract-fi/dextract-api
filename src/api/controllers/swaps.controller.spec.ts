@@ -3,6 +3,7 @@ import { SwapsController } from '@api/controllers/swaps.controller';
 import { SwapsService } from '@services/swaps/swaps.service';
 import { ChainId } from '@exchange/constants/chains.constants';
 import { SwapQuote, SwapRoute } from '@exchange/types/swap.types';
+import { SwapQuoteQueryDto } from '@api/dto/swap-quote.query.dto';
 
 describe('SwapsController', () => {
   let controller: SwapsController;
@@ -32,6 +33,19 @@ describe('SwapsController', () => {
     updatedAt: Date.now(),
   };
 
+  // Create a mock query DTO to match the new controller parameter
+  const createMockQueryDto = (
+    fromToken: string,
+    toToken: string,
+    amount: string
+  ): SwapQuoteQueryDto => {
+    const dto = new SwapQuoteQueryDto();
+    dto.fromToken = fromToken;
+    dto.toToken = toToken;
+    dto.amount = amount;
+    return dto;
+  };
+
   beforeEach(async () => {
     // Create mock for SwapsService
     swapsService = {
@@ -59,11 +73,15 @@ describe('SwapsController', () => {
     it('should return swap quote with all parameters', async () => {
       swapsService.getQuote.mockResolvedValue(mockQuote);
 
-      const result = await controller.getQuote(
-        ChainId.ETHEREUM,
+      const queryDto = createMockQueryDto(
         mockSourceTokenAddress,
         mockDestTokenAddress,
-        mockAmount,
+        mockAmount
+      );
+
+      const result = await controller.getQuote(
+        ChainId.ETHEREUM,
+        queryDto
       );
 
       expect(swapsService.getQuote).toHaveBeenCalledWith(
@@ -98,11 +116,15 @@ describe('SwapsController', () => {
 
       swapsService.getQuote.mockResolvedValue(solanaQuote);
 
-      const result = await controller.getQuote(
-        ChainId.SOLANA,
+      const queryDto = createMockQueryDto(
         solanaMockSourceTokenAddress,
         solanaMockDestTokenAddress,
-        mockAmount,
+        mockAmount
+      );
+
+      const result = await controller.getQuote(
+        ChainId.SOLANA,
+        queryDto
       );
 
       expect(swapsService.getQuote).toHaveBeenCalledWith(
@@ -118,11 +140,15 @@ describe('SwapsController', () => {
       const errorMessage = 'No routes found';
       swapsService.getQuote.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.getQuote(
-        ChainId.ETHEREUM,
+      const queryDto = createMockQueryDto(
         mockSourceTokenAddress,
         mockDestTokenAddress,
-        mockAmount,
+        mockAmount
+      );
+
+      await expect(controller.getQuote(
+        ChainId.ETHEREUM,
+        queryDto
       )).rejects.toThrow(errorMessage);
     });
 
@@ -139,11 +165,15 @@ describe('SwapsController', () => {
       
       swapsService.getQuote.mockResolvedValue(smallQuote);
 
-      const result = await controller.getQuote(
-        ChainId.ETHEREUM,
+      const queryDto = createMockQueryDto(
         mockSourceTokenAddress,
         mockDestTokenAddress,
-        smallAmount,
+        smallAmount
+      );
+
+      const result = await controller.getQuote(
+        ChainId.ETHEREUM,
+        queryDto
       );
 
       expect(swapsService.getQuote).toHaveBeenCalledWith(

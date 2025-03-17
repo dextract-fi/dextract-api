@@ -1,24 +1,40 @@
 import { Controller, Get, Param, Query, ParseIntPipe } from '@nestjs/common';
 import { SwapsService } from '@services/swaps/swaps.service';
-import { SwapQuote } from 'packages/exchange/types/swap.types';
-import { ChainId } from 'packages/exchange/constants/chains.constants';
+import { ChainId } from '@exchange/constants/chains.constants';
+import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { SwapQuoteDto } from '@api/dto/swap.dto';
+import { SwapQuoteQueryDto } from '@api/dto/swap-quote.query.dto';
 
+@ApiTags('swaps')
 @Controller('swaps')
 export class SwapsController {
   constructor(private readonly swapsService: SwapsService) {}
 
   @Get('quote/:chainId')
+  @ApiOperation({ summary: 'Get swap quote' })
+  @ApiParam({ name: 'chainId', description: 'Chain ID', example: ChainId.ETHEREUM })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns swap quote information',
+    type: SwapQuoteDto
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid parameters'
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'No routes found'
+  })
   async getQuote(
     @Param('chainId', ParseIntPipe) chainId: number,
-    @Query('fromToken') fromToken: string,
-    @Query('toToken') toToken: string,
-    @Query('amount') amount: string,
-  ): Promise<SwapQuote> {
+    @Query() query: SwapQuoteQueryDto,
+  ): Promise<SwapQuoteDto> {
     return this.swapsService.getQuote(
       chainId as ChainId,
-      fromToken,
-      toToken,
-      amount,
+      query.fromToken,
+      query.toToken,
+      query.amount,
     );
   }
 }
