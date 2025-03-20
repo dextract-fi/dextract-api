@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]  # Moved to proper section
 
 # Configure build
 [build]
-command = "npm run build"
+command = "pnpm run build"
 watch_dir = "src"
 
 # Configure dev environment
@@ -15,31 +15,21 @@ port = 8787
 local_protocol = "http"
 
 # Production environment
+[env.development]
+workers_dev = true
+name = "dextract-api-dev"
+
+# Production environment
 [env.production]
 workers_dev = false
-name = "dextract-api-prod"
-
-# KV namespace binding (ID should be managed via secrets)
-[[kv_namespaces]]
-binding = "DEXTRACT_KV"
-id = "7757facfc88e430b9ee0fc7dd644b150"  # Replace with secret reference
+name = "dextract-api-prd"
 
 # Routes configuration
 [[routes]]
 pattern = "api.dextract.xyz/*"
-zone_name = "dextract.fi"
+zone_name = "dextract-api"
 
 # Environment variables
 [vars]
-NODE_ENV = "production"
+NODE_ENV = "development"
 ALLOWED_ORIGINS = "https://dextract.xyz,https://app.dextract.xyz"
-
-# Staging environment
-[env.staging]
-workers_dev = true
-name = "dextract-api-staging"
-
-# KV namespace for staging (use separate namespace)
-[[kv_namespaces]]
-binding = "DEXTRACT_KV"
-id = "staging_namespace_id"  # Replace with secret reference
