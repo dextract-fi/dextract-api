@@ -1,34 +1,48 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
 import { PricesService } from '@services/prices/prices.service';
-import { ChainId } from '@exchange/constants/chains.constants';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PriceResponseDto, TokenPriceDto } from '@api/dto/price.dto';
+import { ChainType, NetworkType } from '@common/types/chain.types';
 
 @ApiTags('prices')
 @Controller('prices')
 export class PricesController {
   constructor(private readonly pricesService: PricesService) {}
 
-  @Get(':chainId')
-  @ApiOperation({ summary: 'Get all token prices for a specific chain' })
-  @ApiParam({ name: 'chainId', description: 'Chain ID', example: ChainId.ETHEREUM })
+  /**
+   * Get all token prices for a specific chain and network
+   * @param chain The chain type
+   * @param network The network type
+   */
+  @Get(':chain/:network')
+  @ApiOperation({ summary: 'Get all token prices for a specific chain and network' })
+  @ApiParam({ name: 'chain', description: 'Chain type (e.g., ethereum, solana)', example: 'ethereum' })
+  @ApiParam({ name: 'network', description: 'Network type (e.g., mainnet, testnet)', example: 'mainnet' })
   @ApiResponse({
     status: 200,
     description: 'Returns all token prices',
     type: PriceResponseDto
   })
   async getPrices(
-    @Param('chainId', ParseIntPipe) chainId: number,
+    @Param('chain') chain: ChainType,
+    @Param('network') network: NetworkType,
   ): Promise<PriceResponseDto> {
-    return this.pricesService.getPrices(chainId as ChainId);
+    return this.pricesService.getPrices(chain, network);
   }
 
-  @Get(':chainId/:address')
+  /**
+   * Get price for a specific token
+   * @param chain The chain type
+   * @param network The network type
+   * @param tokenId The token identifier (address or symbol)
+   */
+  @Get(':chain/:network/:tokenId')
   @ApiOperation({ summary: 'Get price for a specific token' })
-  @ApiParam({ name: 'chainId', description: 'Chain ID', example: ChainId.ETHEREUM })
+  @ApiParam({ name: 'chain', description: 'Chain type (e.g., ethereum, solana)', example: 'ethereum' })
+  @ApiParam({ name: 'network', description: 'Network type (e.g., mainnet, testnet)', example: 'mainnet' })
   @ApiParam({ 
-    name: 'address', 
-    description: 'Token address', 
+    name: 'tokenId', 
+    description: 'Token address or symbol', 
     example: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' // USDC on Ethereum
   })
   @ApiResponse({
@@ -41,9 +55,16 @@ export class PricesController {
     description: 'Token price not found'
   })
   async getPrice(
-    @Param('chainId', ParseIntPipe) chainId: number,
-    @Param('address') address: string,
-  ): Promise<TokenPriceDto | null> {
-    return this.pricesService.getPrice(chainId as ChainId, address);
+    @Param('chain') chain: ChainType,
+    @Param('network') network: NetworkType,
+    @Param('tokenId') tokenId: string,
+  ): Promise<TokenPriceDto> {
+    const price = await this.pricesService.getPrice(chain, network, tokenId);
+    
+    if (!price) {
+      throw new NotFoundException(`Price for token ${tokenId} not found on ${chain}:${network}`);
+    }
+    
+    return price;
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SwapQuote, SwapRoute } from '@exchange/types/swap.types';
-import { ChainId } from '@exchange/constants/chains.constants';
+import { ChainType, NetworkType } from '@common/types/chain.types';
 import { TokensService } from '@services/tokens/tokens.service';
 import { PricesService } from '@services/prices/prices.service';
 import { DataStoreService } from '@datastore/datastore.service';
@@ -18,22 +18,23 @@ export class SwapsService {
   ) {}
 
   async getQuote(
-    chainId: ChainId,
+    chain: ChainType,
+    network: NetworkType,
     fromToken: string,
     toToken: string,
     amount: string,
   ): Promise<SwapQuote> {
-    this.logger.log(`Getting quote for ${amount} ${fromToken} to ${toToken} on chain ${chainId}`);
+    this.logger.log(`Getting quote for ${amount} ${fromToken} to ${toToken} on chain ${chain}:${network}`);
     
     // Use a deterministic key for caching based on all parameters
-    const key = `chain:${chainId}:quote:${fromToken}:${toToken}:${amount}`;
+    const key = `chain:${chain}:${network}:quote:${fromToken}:${toToken}:${amount}`;
     
     return this.dataStoreService.getOrSet<SwapQuote>(
       key,
       async () => {
         // Validate tokens exist
-        const sourceToken = await this.tokensService.getToken(chainId, fromToken);
-        const destinationToken = await this.tokensService.getToken(chainId, toToken);
+        const sourceToken = await this.tokensService.getToken(chain, network, fromToken);
+        const destinationToken = await this.tokensService.getToken(chain, network, toToken);
         
         if (!sourceToken || !destinationToken) {
           throw new Error('One or both tokens not found');
@@ -41,7 +42,8 @@ export class SwapsService {
         
         // Fetch routes
         const routes = await this.fetchRoutes(
-          chainId,
+          chain,
+          network,
           sourceToken.address,
           destinationToken.address,
           amount,
@@ -72,7 +74,8 @@ export class SwapsService {
   }
 
   private async fetchRoutes(
-    chainId: ChainId,
+    chain: ChainType,
+    network: NetworkType,
     fromToken: string,
     toToken: string,
     amount: string,

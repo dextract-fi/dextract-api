@@ -1,171 +1,411 @@
 # Dextract-fi API Documentation
 
-## Table of Contents
+*[Back to README](../README.md) | [Architecture Overview](./architecture-flow.md) | [Architecture Diagrams](./architecture-diagrams.md) | [Implementation Summary](./implementation-summary.md)*
 
-- [](#)
-- [prices](#prices)
-- [swaps](#swaps)
-- [tokens](#tokens)
+This document provides comprehensive documentation for the Dextract-fi API endpoints.
 
-## 
+## Base URL
 
-### GET /
+```
+https://api.dextract.fi
+```
 
-#### Responses
+For local development:
 
-| Status Code | Description | Schema |
-| ----------- | ----------- | ------ |
-| 200 |  | N/A |
+```
+http://localhost:3001
+```
 
-## prices
+All endpoints are prefixed with `/api`.
 
-### GET /prices/{chainId}
+## Authentication
 
-**Summary:** Get all token prices for a specific chain
+Currently, the API does not require authentication. However, rate limiting may be applied to prevent abuse.
 
-#### Parameters
+## Response Format
 
-| Name | Located in | Required | Description | Schema |
-| ---- | ---------- | -------- | ----------- | ------ |
-| chainId | path | Yes | Chain ID | number |
+All responses are returned in JSON format. Successful responses will have a 2xx status code, while errors will have a 4xx or 5xx status code.
 
-#### Responses
+### Success Response
 
-| Status Code | Description | Schema |
-| ----------- | ----------- | ------ |
-| 200 | Returns all token prices | [PriceResponseDto](#priceresponsedto) |
+```json
+{
+  "data": { ... }
+}
+```
 
-### GET /prices/{chainId}/{address}
+### Error Response
 
-**Summary:** Get price for a specific token
+```json
+{
+  "statusCode": 400,
+  "message": "Error message",
+  "error": "Bad Request"
+}
+```
 
-#### Parameters
+## Token Endpoints
 
-| Name | Located in | Required | Description | Schema |
-| ---- | ---------- | -------- | ----------- | ------ |
-| chainId | path | Yes | Chain ID | number |
-| address | path | Yes | Token address | string |
+### Get All Tokens
 
-#### Responses
+Retrieves all tokens for a specific chain and network.
 
-| Status Code | Description | Schema |
-| ----------- | ----------- | ------ |
-| 200 | Returns token price information | [TokenPriceDto](#tokenpricedto) |
-| 404 | Token price not found | N/A |
+```
+GET /api/tokens/:chain/:network
+```
 
-## swaps
+#### Path Parameters
 
-### GET /swaps/quote/{chainId}
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| chain | string | Chain type | ethereum, solana |
+| network | string | Network type | mainnet, testnet |
 
-**Summary:** Get swap quote
+#### Example Request
 
-#### Parameters
+```
+GET /api/tokens/ethereum/mainnet
+```
 
-| Name | Located in | Required | Description | Schema |
-| ---- | ---------- | -------- | ----------- | ------ |
-| chainId | path | Yes | Chain ID | number |
-| fromToken | query | Yes | Source token address | string |
-| toToken | query | Yes | Destination token address | string |
-| amount | query | Yes | Amount of source token to swap (in wei/lamports) | string |
+#### Example Response
 
-#### Responses
+```json
+[
+  {
+    "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "symbol": "USDC",
+    "name": "USD Coin",
+    "decimals": 6,
+    "logoURI": "https://assets.coingecko.com/coins/images/6319/thumb/USD_Coin_icon.png",
+    "tags": ["stablecoin"],
+    "chainType": "ethereum",
+    "networkType": "mainnet"
+  },
+  {
+    "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "symbol": "WETH",
+    "name": "Wrapped Ether",
+    "decimals": 18,
+    "logoURI": "https://assets.coingecko.com/coins/images/2518/thumb/weth.png",
+    "tags": ["wrapped"],
+    "chainType": "ethereum",
+    "networkType": "mainnet"
+  }
+]
+```
 
-| Status Code | Description | Schema |
-| ----------- | ----------- | ------ |
-| 200 | Returns swap quote information | [SwapQuoteDto](#swapquotedto) |
-| 400 | Invalid parameters | N/A |
-| 404 | No routes found | N/A |
+### Get Token by ID
 
-## tokens
+Retrieves a specific token by address or symbol.
 
-### GET /tokens/{chainId}
+```
+GET /api/tokens/:chain/:network/:tokenId
+```
 
-**Summary:** Get all tokens for a specific chain
+#### Path Parameters
 
-#### Parameters
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| chain | string | Chain type | ethereum, solana |
+| network | string | Network type | mainnet, testnet |
+| tokenId | string | Token address or symbol | 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, USDC |
 
-| Name | Located in | Required | Description | Schema |
-| ---- | ---------- | -------- | ----------- | ------ |
-| chainId | path | Yes | Chain ID | number |
+#### Example Request
 
-#### Responses
+```
+GET /api/tokens/ethereum/mainnet/USDC
+```
 
-| Status Code | Description | Schema |
-| ----------- | ----------- | ------ |
-| 200 | Returns an array of tokens | Array<[TokenDto](#tokendto)> |
+#### Example Response
 
-### GET /tokens/{chainId}/{address}
+```json
+{
+  "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  "symbol": "USDC",
+  "name": "USD Coin",
+  "decimals": 6,
+  "logoURI": "https://assets.coingecko.com/coins/images/6319/thumb/USD_Coin_icon.png",
+  "tags": ["stablecoin"],
+  "chainType": "ethereum",
+  "networkType": "mainnet"
+}
+```
 
-**Summary:** Get a specific token by address
+### Legacy: Get All Tokens by Chain ID
 
-#### Parameters
+Retrieves all tokens for a specific chain ID (legacy endpoint).
 
-| Name | Located in | Required | Description | Schema |
-| ---- | ---------- | -------- | ----------- | ------ |
-| chainId | path | Yes | Chain ID | number |
-| address | path | Yes | Token address | string |
+```
+GET /api/tokens/legacy/:chainId
+```
 
-#### Responses
+#### Path Parameters
 
-| Status Code | Description | Schema |
-| ----------- | ----------- | ------ |
-| 200 | Returns token information | [TokenDto](#tokendto) |
-| 404 | Token not found | N/A |
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| chainId | string | Chain ID | 1 (Ethereum), 101 (Solana) |
 
-## Schemas
+#### Example Request
 
-### TokenDto
+```
+GET /api/tokens/legacy/1
+```
 
-| Property | Type | Required | Description |
-| -------- | ---- | -------- | ----------- |
-| address | string | Yes | Token address |
-| symbol | string | Yes | Token symbol |
-| name | string | Yes | Token name |
-| decimals | number | Yes | Token decimals |
-| logoURI | string | No | Token logo URI |
-| tags | Array<string> | No | Token tags |
-| chainId | number | Yes | Chain ID of the token |
+### Legacy: Get Token by Chain ID and Address
 
-### PriceResponseDto
+Retrieves a specific token by chain ID and address (legacy endpoint).
 
-| Property | Type | Required | Description |
-| -------- | ---- | -------- | ----------- |
-| prices | object | Yes | Map of token addresses to their price information |
-| updatedAt | number | Yes | Timestamp when prices were last updated |
+```
+GET /api/tokens/legacy/:chainId/:address
+```
 
-### TokenPriceDto
+#### Path Parameters
 
-| Property | Type | Required | Description |
-| -------- | ---- | -------- | ----------- |
-| address | string | Yes | Token address |
-| priceUsd | number | Yes | Token price in USD |
-| timestamp | number | Yes | Price timestamp |
-| change24h | number | No | 24-hour price change percentage |
-| change7d | number | No | 7-day price change percentage |
-| volume24h | number | No | 24-hour trading volume in USD |
-| marketCap | number | No | Token market capitalization in USD |
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| chainId | string | Chain ID | 1 (Ethereum), 101 (Solana) |
+| address | string | Token address | 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 |
 
-### SwapRouteDto
+#### Example Request
 
-| Property | Type | Required | Description |
-| -------- | ---- | -------- | ----------- |
-| fromToken | string | Yes | Source token address |
-| toToken | string | Yes | Destination token address |
-| fromAmount | string | Yes | Amount of source token to swap (in wei/lamports) |
-| toAmount | string | Yes | Expected amount of destination token to receive (in wei/lamports) |
-| priceImpact | number | Yes | Price impact of the swap as a percentage |
-| path | Array<string> | Yes | Token addresses in the swap path |
-| providers | Array<string> | Yes | DEX providers used in the route |
-| estimatedGas | string | No | Estimated gas cost (in wei/lamports) |
+```
+GET /api/tokens/legacy/1/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+```
 
-### SwapQuoteDto
+## Price Endpoints
 
-| Property | Type | Required | Description |
-| -------- | ---- | -------- | ----------- |
-| routes | Array<[SwapRouteDto](#swaproutedto)> | Yes | All available swap routes |
-| bestRoute | object | Yes | Best swap route based on output amount |
-| fromToken | string | Yes | Source token address |
-| toToken | string | Yes | Destination token address |
-| fromAmount | string | Yes | Amount of source token to swap (in wei/lamports) |
-| updatedAt | number | Yes | Timestamp when the quote was generated |
+### Get All Prices
 
+Retrieves all token prices for a specific chain and network.
+
+```
+GET /api/prices/:chain/:network
+```
+
+#### Path Parameters
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| chain | string | Chain type | ethereum, solana |
+| network | string | Network type | mainnet, testnet |
+
+#### Example Request
+
+```
+GET /api/prices/ethereum/mainnet
+```
+
+#### Example Response
+
+```json
+{
+  "prices": {
+    "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": {
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "priceUsd": 1.0,
+      "timestamp": 1679395200000,
+      "change24h": 0.01,
+      "volume24h": 1000000000
+    },
+    "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
+      "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "priceUsd": 3500.0,
+      "timestamp": 1679395200000,
+      "change24h": 2.5,
+      "volume24h": 500000000
+    }
+  },
+  "updatedAt": 1679395200000
+}
+```
+
+### Get Price by Token ID
+
+Retrieves price for a specific token.
+
+```
+GET /api/prices/:chain/:network/:tokenId
+```
+
+#### Path Parameters
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| chain | string | Chain type | ethereum, solana |
+| network | string | Network type | mainnet, testnet |
+| tokenId | string | Token address or symbol | 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, USDC |
+
+#### Example Request
+
+```
+GET /api/prices/ethereum/mainnet/USDC
+```
+
+#### Example Response
+
+```json
+{
+  "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  "priceUsd": 1.0,
+  "timestamp": 1679395200000,
+  "change24h": 0.01,
+  "volume24h": 1000000000
+}
+```
+
+### Legacy: Get All Prices by Chain ID
+
+Retrieves all token prices for a specific chain ID (legacy endpoint).
+
+```
+GET /api/prices/legacy/:chainId
+```
+
+#### Path Parameters
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| chainId | string | Chain ID | 1 (Ethereum), 101 (Solana) |
+
+#### Example Request
+
+```
+GET /api/prices/legacy/1
+```
+
+### Legacy: Get Price by Chain ID and Address
+
+Retrieves price for a specific token by chain ID and address (legacy endpoint).
+
+```
+GET /api/prices/legacy/:chainId/:address
+```
+
+#### Path Parameters
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| chainId | string | Chain ID | 1 (Ethereum), 101 (Solana) |
+| address | string | Token address | 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 |
+
+#### Example Request
+
+```
+GET /api/prices/legacy/1/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+```
+
+## Swap Endpoints
+
+### Get Swap Quote
+
+Retrieves a swap quote for a token pair.
+
+```
+GET /api/swaps/quote/:chain/:network
+```
+
+#### Path Parameters
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| chain | string | Chain type | ethereum, solana |
+| network | string | Network type | mainnet, testnet |
+
+#### Query Parameters
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| fromToken | string | Source token address | 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 |
+| toToken | string | Destination token address | 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 |
+| amount | string | Amount of source token to swap (in wei/lamports) | 1000000000 |
+
+#### Example Request
+
+```
+GET /api/swaps/quote/ethereum/mainnet?fromToken=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&toToken=0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2&amount=1000000000
+```
+
+#### Example Response
+
+```json
+{
+  "routes": [
+    {
+      "fromToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "toToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "fromAmount": "1000000000",
+      "toAmount": "285714285714285714",
+      "priceImpact": 0.05,
+      "path": [
+        "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+      ],
+      "providers": ["Uniswap V3"],
+      "estimatedGas": "150000"
+    },
+    {
+      "fromToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "toToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "fromAmount": "1000000000",
+      "toAmount": "284571428571428571",
+      "priceImpact": 0.08,
+      "path": [
+        "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+      ],
+      "providers": ["Sushiswap"],
+      "estimatedGas": "180000"
+    }
+  ],
+  "bestRoute": {
+    "fromToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "toToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "fromAmount": "1000000000",
+    "toAmount": "285714285714285714",
+    "priceImpact": 0.05,
+    "path": [
+      "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+    ],
+    "providers": ["Uniswap V3"],
+    "estimatedGas": "150000"
+  },
+  "fromToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  "toToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+  "fromAmount": "1000000000",
+  "updatedAt": 1679395200000
+}
+```
+
+## Error Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 400 | Bad Request - The request was malformed or missing required parameters |
+| 404 | Not Found - The requested resource was not found |
+| 429 | Too Many Requests - Rate limit exceeded |
+| 500 | Internal Server Error - Something went wrong on the server |
+
+## Chain and Network Support
+
+| Chain | Chain Type | Networks |
+|-------|-----------|----------|
+| Ethereum | ethereum | mainnet, testnet, localnet |
+| Solana | solana | mainnet, testnet, devnet, localnet |
+| Binance Smart Chain | bsc | mainnet |
+| Polygon | polygon | mainnet |
+| Arbitrum | arbitrum | mainnet |
+| Optimism | optimism | mainnet |
+| Avalanche | avalanche | mainnet |
+
+## Legacy Chain ID Mapping
+
+| Chain ID | Chain | Network |
+|----------|-------|---------|
+| 1 | ethereum | mainnet |
+| 101 | solana | mainnet |
+| 56 | bsc | mainnet |
+| 137 | polygon | mainnet |
+| 42161 | arbitrum | mainnet |
+| 10 | optimism | mainnet |
+| 43114 | avalanche | mainnet |

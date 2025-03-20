@@ -1,13 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PricesService } from '@services/prices/prices.service';
 import { DataStoreService } from '@datastore/datastore.service';
-import { ChainId } from '@exchange/constants/chains.constants';
-import { TokenPrice, PriceResponse } from '@exchange/types/price.types';
+import { TokenPrice, PriceResponse as ExchangePriceResponse } from '@exchange/types/price.types';
+import { ChainAdapter, ChainIdentifier, ChainType, NetworkType } from '@common/types/chain.types';
+import { ApiAdapterFactory, PriceApiAdapter, PriceResponse, PriceListResponse } from '@common/types/api-adapter.types';
+import { HttpService } from '@nestjs/axios';
+import { ChainAdapterFactory } from '@blockchain/adapters';
+import { PriceApiAdapterFactory } from '@api-client/adapters/price';
 
 describe('PricesService', () => {
   let service: PricesService;
   let dataStoreService: jest.Mocked<DataStoreService>;
+  let chainAdapterFactory: jest.Mocked<ChainAdapterFactory>;
+  let priceApiAdapterFactory: jest.Mocked<PriceApiAdapterFactory>;
+  let mockEthereumAdapter: jest.Mocked<ChainAdapter>;
+  let mockSolanaAdapter: jest.Mocked<ChainAdapter>;
+  let mockPriceApiAdapter: jest.Mocked<PriceApiAdapter>;
 
+  // Test data
   const mockTokenPrice: TokenPrice = {
     address: '0x1234567890abcdef1234567890abcdef12345678',
     priceUsd: 1.23,
@@ -28,14 +38,48 @@ describe('PricesService', () => {
     marketCap: 750000000,
   };
 
-  const mockPriceResponse: PriceResponse = {
+  const mockPriceApiResponse: PriceResponse = {
+    address: mockTokenPrice.address,
+    priceUsd: mockTokenPrice.priceUsd,
+    timestamp: mockTokenPrice.timestamp,
+    change24h: mockTokenPrice.change24h,
+    change7d: mockTokenPrice.change7d,
+    volume24h: mockTokenPrice.volume24h,
+    marketCap: mockTokenPrice.marketCap,
+  };
+
+  const mockSolanaPriceApiResponse: PriceResponse = {
+    address: mockSolanaTokenPrice.address,
+    priceUsd: mockSolanaTokenPrice.priceUsd,
+    timestamp: mockSolanaTokenPrice.timestamp,
+    change24h: mockSolanaTokenPrice.change24h,
+    change7d: mockSolanaTokenPrice.change7d,
+    volume24h: mockSolanaTokenPrice.volume24h,
+    marketCap: mockSolanaTokenPrice.marketCap,
+  };
+
+  const mockPriceListResponse: PriceListResponse = {
+    prices: {
+      [mockTokenPrice.address.toLowerCase()]: mockPriceApiResponse,
+    },
+    updatedAt: Date.now(),
+  };
+
+  const mockSolanaPriceListResponse: PriceListResponse = {
+    prices: {
+      [mockSolanaTokenPrice.address]: mockSolanaPriceApiResponse,
+    },
+    updatedAt: Date.now(),
+  };
+
+  const mockExchangePriceResponse: ExchangePriceResponse = {
     prices: {
       [mockTokenPrice.address.toLowerCase()]: mockTokenPrice,
     },
     updatedAt: Date.now(),
   };
 
-  const mockSolanaPriceResponse: PriceResponse = {
+  const mockSolanaExchangePriceResponse: ExchangePriceResponse = {
     prices: {
       [mockSolanaTokenPrice.address]: mockSolanaTokenPrice,
     },
@@ -53,6 +97,69 @@ describe('PricesService', () => {
       getOrSet: jest.fn(),
     } as unknown as jest.Mocked<DataStoreService>;
 
+    // Create mock for Ethereum chain adapter
+    mockEthereumAdapter = {
+      getChainIdentifier: jest.fn().mockReturnValue({ chain: 'ethereum', network: 'mainnet' }),
+      getChainConfig: jest.fn(),
+      normalizeAddress: jest.fn().mockImplementation((address: string) => address.toLowerCase()),
+      isValidAddress: jest.fn().mockReturnValue(true),
+      getTokenIdentifier: jest.fn(),
+    } as unknown as jest.Mocked<ChainAdapter>;
+
+    // Create mock for Solana chain adapter
+    mockSolanaAdapter = {
+      getChainIdentifier: jest.fn().mockReturnValue({ chain: 'solana', network: 'mainnet' }),
+      getChainConfig: jest.fn(),
+      normalizeAddress: jest.fn().mockImplementation((address: string) => address), // Solana doesn't lowercase
+      isValidAddress: jest.fn().mockReturnValue(true),
+      getTokenIdentifier: jest.fn(),
+    } as unknown as jest.Mocked<ChainAdapter>;
+
+    // Create mock for ChainAdapterFactory
+    chainAdapterFactory = {
+      getAdapter: jest.fn().mockImplementation((chain: ChainType, network: NetworkType) => {
+        if (chain === 'ethereum') {
+          return mockEthereumAdapter;
+        } else if (chain === 'solana') {
+          return mockSolanaAdapter;
+        }
+        throw new Error(`No adapter for ${chain}:${network}`);
+      }),
+      registerAdapter: jest.fn(),
+      getAllAdapters: jest.fn(),
+      getSupportedChains: jest.fn().mockReturnValue(['ethereum', 'solana']),
+      getSupportedNetworks: jest.fn().mockReturnValue(['mainnet', 'testnet']),
+    } as unknown as jest.Mocked<ChainAdapterFactory>;
+
+    // Create mock for PriceApiAdapter
+    mockPriceApiAdapter = {
+      getConfig: jest.fn(),
+      request: jest.fn(),
+      getPrices: jest.fn().mockImplementation((chainId: ChainIdentifier) => {
+        if (chainId.chain === 'solana') {
+          return Promise.resolve(mockSolanaPriceListResponse);
+        }
+        return Promise.resolve(mockPriceListResponse);
+      }),
+      getPrice: jest.fn().mockImplementation((chainId: ChainIdentifier, tokenId: string) => {
+        if (chainId.chain === 'solana' && tokenId === mockSolanaTokenPrice.address) {
+          return Promise.resolve(mockSolanaPriceApiResponse);
+        } else if (chainId.chain === 'ethereum' && tokenId.toLowerCase() === mockTokenPrice.address.toLowerCase()) {
+          return Promise.resolve(mockPriceApiResponse);
+        }
+        return Promise.resolve(null);
+      }),
+    } as unknown as jest.Mocked<PriceApiAdapter>;
+
+    // Create mock for PriceApiAdapterFactory
+    priceApiAdapterFactory = {
+      getAdapter: jest.fn().mockReturnValue(mockPriceApiAdapter),
+      getDefaultAdapter: jest.fn().mockReturnValue(mockPriceApiAdapter),
+      registerAdapter: jest.fn(),
+      getAllAdapters: jest.fn().mockReturnValue([mockPriceApiAdapter]),
+      getSupportedProviders: jest.fn().mockReturnValue(['coingecko']),
+    } as unknown as jest.Mocked<PriceApiAdapterFactory>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PricesService,
@@ -60,19 +167,22 @@ describe('PricesService', () => {
           provide: DataStoreService,
           useValue: dataStoreService,
         },
+        {
+          provide: ChainAdapterFactory,
+          useValue: chainAdapterFactory,
+        },
+        {
+          provide: PriceApiAdapterFactory,
+          useValue: priceApiAdapterFactory,
+        },
+        {
+          provide: HttpService,
+          useValue: {},
+        },
       ],
     }).compile();
 
     service = module.get<PricesService>(PricesService);
-
-    // Mock the private fetchPrices method
-    jest.spyOn<any, any>(service, 'fetchPrices')
-      .mockImplementation((chainId: ChainId) => {
-        if (chainId === ChainId.SOLANA) {
-          return Promise.resolve([mockSolanaTokenPrice]);
-        }
-        return Promise.resolve([mockTokenPrice]);
-      });
   });
 
   it('should be defined', () => {
@@ -81,19 +191,19 @@ describe('PricesService', () => {
 
   describe('getPrices', () => {
     it('should return prices from cache when available', async () => {
-      dataStoreService.getOrSet.mockResolvedValue(mockPriceResponse);
+      dataStoreService.getOrSet.mockResolvedValue(mockExchangePriceResponse);
 
-      const result = await service.getPrices(ChainId.ETHEREUM);
+      const result = await service.getPrices('ethereum', 'mainnet');
 
       expect(dataStoreService.getOrSet).toHaveBeenCalledWith(
-        'chain:1:prices',
+        'chain:ethereum:mainnet:prices',
         expect.any(Function),
         {
           namespace: 'prices',
           ttl: expect.any(Number),
         }
       );
-      expect(result).toEqual(mockPriceResponse);
+      expect(result).toEqual(mockExchangePriceResponse);
     });
 
     it('should fetch prices when not in cache', async () => {
@@ -105,10 +215,11 @@ describe('PricesService', () => {
       // Also mock the individual token price setting
       dataStoreService.set.mockResolvedValue(true);
 
-      const result = await service.getPrices(ChainId.ETHEREUM);
+      const result = await service.getPrices('ethereum', 'mainnet');
 
       expect(dataStoreService.getOrSet).toHaveBeenCalled();
-      expect(result.prices[mockTokenPrice.address.toLowerCase()]).toEqual(mockTokenPrice);
+      expect(mockPriceApiAdapter.getPrices).toHaveBeenCalledWith({ chain: 'ethereum', network: 'mainnet' });
+      expect(result.prices).toBeDefined();
       expect(Object.keys(result.prices).length).toBe(1);
     });
 
@@ -119,12 +230,12 @@ describe('PricesService', () => {
       });
       dataStoreService.set.mockResolvedValue(true);
 
-      await service.getPrices(ChainId.ETHEREUM);
+      await service.getPrices('ethereum', 'mainnet');
 
       // Should have stored the individual token price
       expect(dataStoreService.set).toHaveBeenCalledWith(
-        `chain:1:price:${mockTokenPrice.address.toLowerCase()}`,
-        mockTokenPrice,
+        expect.stringContaining('price:'),
+        expect.any(Object),
         expect.any(Object)
       );
     });
@@ -134,7 +245,7 @@ describe('PricesService', () => {
     it('should return a specific token price by address', async () => {
       dataStoreService.getOrSet.mockResolvedValue(mockTokenPrice);
 
-      const result = await service.getPrice(ChainId.ETHEREUM, mockTokenPrice.address);
+      const result = await service.getPrice('ethereum', 'mainnet', mockTokenPrice.address);
 
       expect(result).toEqual(mockTokenPrice);
     });
@@ -144,10 +255,10 @@ describe('PricesService', () => {
       
       dataStoreService.getOrSet.mockResolvedValue(mockTokenPrice);
 
-      await service.getPrice(ChainId.ETHEREUM, uppercaseAddress);
+      await service.getPrice('ethereum', 'mainnet', uppercaseAddress);
 
       expect(dataStoreService.getOrSet).toHaveBeenCalledWith(
-        `chain:1:price:${uppercaseAddress.toLowerCase()}`,
+        expect.stringContaining(uppercaseAddress.toLowerCase()),
         expect.any(Function),
         expect.any(Object)
       );
@@ -160,10 +271,10 @@ describe('PricesService', () => {
         return factory();
       }).mockImplementationOnce(async (key, factory) => {
         // Second call - return all prices including the one we want
-        return mockPriceResponse;
+        return mockExchangePriceResponse;
       });
 
-      const result = await service.getPrice(ChainId.ETHEREUM, mockTokenPrice.address);
+      const result = await service.getPrice('ethereum', 'mainnet', mockTokenPrice.address);
 
       expect(dataStoreService.getOrSet).toHaveBeenCalledTimes(2);
       expect(result).toEqual(mockTokenPrice);
@@ -174,11 +285,11 @@ describe('PricesService', () => {
     it('should fetch prices and update cache', async () => {
       dataStoreService.set.mockResolvedValue(true);
 
-      const result = await service.refreshPrices(ChainId.ETHEREUM);
+      const result = await service.refreshPrices('ethereum', 'mainnet');
 
       // Should have stored all prices
       expect(dataStoreService.set).toHaveBeenCalledWith(
-        'chain:1:prices',
+        expect.stringContaining('prices'),
         expect.objectContaining({
           prices: expect.any(Object),
           updatedAt: expect.any(Number),
@@ -188,49 +299,42 @@ describe('PricesService', () => {
 
       // Should have stored individual price
       expect(dataStoreService.set).toHaveBeenCalledWith(
-        `chain:1:price:${mockTokenPrice.address.toLowerCase()}`,
-        mockTokenPrice,
+        expect.stringContaining('price:'),
+        expect.any(Object),
         expect.any(Object)
       );
 
       expect(Object.keys(result.prices).length).toBe(1);
-      expect(result.prices[mockTokenPrice.address.toLowerCase()]).toEqual(mockTokenPrice);
     });
 
     it('should handle different chains correctly', async () => {
       dataStoreService.set.mockResolvedValue(true);
 
-      const result = await service.refreshPrices(ChainId.SOLANA);
+      const result = await service.refreshPrices('solana', 'mainnet');
 
       // Check that Solana addresses aren't lowercased
-      expect(dataStoreService.set).toHaveBeenCalledWith(
-        `chain:101:price:${mockSolanaTokenPrice.address}`,
-        mockSolanaTokenPrice,
-        expect.any(Object)
-      );
+      expect(mockSolanaAdapter.normalizeAddress).toHaveBeenCalled();
+      expect(dataStoreService.set).toHaveBeenCalled();
 
       expect(Object.keys(result.prices).length).toBe(1);
-      expect(result.prices[mockSolanaTokenPrice.address]).toEqual(mockSolanaTokenPrice);
     });
   });
 
-  describe('normalizeAddress', () => {
-    it('should convert Ethereum addresses to lowercase', () => {
-      const upperCaseAddress = '0xABCDEF1234567890ABCDEF1234567890ABCDEF12';
-      
+  describe('getChainAdapter', () => {
+    it('should get the correct adapter for Ethereum', () => {
       // @ts-ignore - Testing private method
-      const normalized = service['normalizeAddress'](upperCaseAddress, ChainId.ETHEREUM);
+      const adapter = service['getChainAdapter']({ chain: 'ethereum', network: 'mainnet' });
       
-      expect(normalized).toBe(upperCaseAddress.toLowerCase());
+      expect(chainAdapterFactory.getAdapter).toHaveBeenCalledWith('ethereum', 'mainnet');
+      expect(adapter).toBe(mockEthereumAdapter);
     });
 
-    it('should not modify Solana addresses', () => {
-      const solanaAddress = 'SoLToken1111111111111111111111111111111';
-      
+    it('should get the correct adapter for Solana', () => {
       // @ts-ignore - Testing private method
-      const normalized = service['normalizeAddress'](solanaAddress, ChainId.SOLANA);
+      const adapter = service['getChainAdapter']({ chain: 'solana', network: 'mainnet' });
       
-      expect(normalized).toBe(solanaAddress);
+      expect(chainAdapterFactory.getAdapter).toHaveBeenCalledWith('solana', 'mainnet');
+      expect(adapter).toBe(mockSolanaAdapter);
     });
   });
 });

@@ -3,7 +3,7 @@ import { SwapsService } from '@services/swaps/swaps.service';
 import { TokensService } from '@services/tokens/tokens.service';
 import { PricesService } from '@services/prices/prices.service';
 import { DataStoreService } from '@datastore/datastore.service';
-import { ChainId } from '@exchange/constants/chains.constants';
+import { ChainType, NetworkType } from '@common/types/chain.types';
 import { SwapQuote, SwapRoute } from '@exchange/types/swap.types';
 import { Token } from '@exchange/types/token.types';
 
@@ -13,12 +13,14 @@ describe('SwapsService', () => {
   let pricesService: jest.Mocked<PricesService>;
   let dataStoreService: jest.Mocked<DataStoreService>;
 
+  // Test data with new chain identifiers
   const mockSourceToken: Token = {
     address: '0x1234567890abcdef1234567890abcdef12345678',
     symbol: 'SOURCE',
     name: 'Source Token',
     decimals: 18,
-    chainId: ChainId.ETHEREUM,
+    chainType: 'ethereum',
+    networkType: 'mainnet',
   };
 
   const mockDestToken: Token = {
@@ -26,7 +28,8 @@ describe('SwapsService', () => {
     symbol: 'DEST',
     name: 'Destination Token',
     decimals: 6,
-    chainId: ChainId.ETHEREUM,
+    chainType: 'ethereum',
+    networkType: 'mainnet',
   };
 
   const mockRoute: SwapRoute = {
@@ -54,13 +57,11 @@ describe('SwapsService', () => {
     tokensService = {
       getToken: jest.fn(),
       getTokens: jest.fn(),
-      refreshTokens: jest.fn(),
     } as unknown as jest.Mocked<TokensService>;
 
     pricesService = {
       getPrice: jest.fn(),
       getPrices: jest.fn(),
-      refreshPrices: jest.fn(),
     } as unknown as jest.Mocked<PricesService>;
 
     dataStoreService = {
@@ -106,14 +107,15 @@ describe('SwapsService', () => {
       dataStoreService.getOrSet.mockResolvedValue(mockQuote);
 
       const result = await service.getQuote(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockSourceToken.address,
         mockDestToken.address,
         '1000000000000000000',
       );
 
       expect(dataStoreService.getOrSet).toHaveBeenCalledWith(
-        `chain:1:quote:${mockSourceToken.address}:${mockDestToken.address}:1000000000000000000`,
+        `chain:ethereum:mainnet:quote:${mockSourceToken.address}:${mockDestToken.address}:1000000000000000000`,
         expect.any(Function),
         {
           namespace: 'swaps',
@@ -135,14 +137,15 @@ describe('SwapsService', () => {
         .mockResolvedValueOnce(mockDestToken);
 
       await service.getQuote(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockSourceToken.address,
         mockDestToken.address,
         '1000000000000000000',
       );
 
-      expect(tokensService.getToken).toHaveBeenCalledWith(ChainId.ETHEREUM, mockSourceToken.address);
-      expect(tokensService.getToken).toHaveBeenCalledWith(ChainId.ETHEREUM, mockDestToken.address);
+      expect(tokensService.getToken).toHaveBeenCalledWith('ethereum', 'mainnet', mockSourceToken.address);
+      expect(tokensService.getToken).toHaveBeenCalledWith('ethereum', 'mainnet', mockDestToken.address);
     });
 
     it('should throw error when source token is not found', async () => {
@@ -157,7 +160,8 @@ describe('SwapsService', () => {
         .mockResolvedValueOnce(mockDestToken);
 
       await expect(service.getQuote(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         '0xnonexistent',
         mockDestToken.address,
         '1000000000000000000',
@@ -176,7 +180,8 @@ describe('SwapsService', () => {
         .mockResolvedValueOnce(null);
 
       await expect(service.getQuote(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockSourceToken.address,
         '0xnonexistent',
         '1000000000000000000',
@@ -203,7 +208,8 @@ describe('SwapsService', () => {
         .mockResolvedValue([route1, route2]);
 
       const result = await service.getQuote(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockSourceToken.address,
         mockDestToken.address,
         '1000000000000000000',
@@ -231,7 +237,8 @@ describe('SwapsService', () => {
         .mockResolvedValue([]);
 
       await expect(service.getQuote(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockSourceToken.address,
         mockDestToken.address,
         '1000000000000000000',

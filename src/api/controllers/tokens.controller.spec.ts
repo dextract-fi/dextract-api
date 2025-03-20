@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TokensController } from '@api/controllers/tokens.controller';
 import { TokensService } from '@services/tokens/tokens.service';
-import { ChainId } from '@exchange/constants/chains.constants';
+import { ChainType, NetworkType } from '@common/types/chain.types';
 import { Token } from '@exchange/types/token.types';
+import { NotFoundException } from '@nestjs/common';
 
 describe('TokensController', () => {
   let controller: TokensController;
@@ -13,9 +14,10 @@ describe('TokensController', () => {
     symbol: 'TEST',
     name: 'Test Token',
     decimals: 18,
-    chainId: ChainId.ETHEREUM,
     logoURI: 'https://example.com/logo.png',
     tags: ['stablecoin'],
+    chainType: 'ethereum',
+    networkType: 'mainnet',
   };
 
   const mockTokenList: Token[] = [
@@ -25,7 +27,8 @@ describe('TokensController', () => {
       symbol: 'TKN2',
       name: 'Token 2',
       decimals: 6,
-      chainId: ChainId.ETHEREUM,
+      chainType: 'ethereum',
+      networkType: 'mainnet',
     },
   ];
 
@@ -58,9 +61,9 @@ describe('TokensController', () => {
     it('should return array of tokens for a chain', async () => {
       tokensService.getTokens.mockResolvedValue(mockTokenList);
 
-      const result = await controller.getTokens(ChainId.ETHEREUM);
+      const result = await controller.getTokens('ethereum', 'mainnet');
 
-      expect(tokensService.getTokens).toHaveBeenCalledWith(ChainId.ETHEREUM);
+      expect(tokensService.getTokens).toHaveBeenCalledWith('ethereum', 'mainnet');
       expect(result).toEqual(mockTokenList);
       expect(result.length).toBe(2);
     });
@@ -72,15 +75,16 @@ describe('TokensController', () => {
           symbol: 'SOL',
           name: 'Solana',
           decimals: 9,
-          chainId: ChainId.SOLANA,
+          chainType: 'solana',
+          networkType: 'mainnet',
         },
       ];
 
       tokensService.getTokens.mockResolvedValue(solanaTokens);
 
-      const result = await controller.getTokens(ChainId.SOLANA);
+      const result = await controller.getTokens('solana', 'mainnet');
 
-      expect(tokensService.getTokens).toHaveBeenCalledWith(ChainId.SOLANA);
+      expect(tokensService.getTokens).toHaveBeenCalledWith('solana', 'mainnet');
       expect(result).toEqual(solanaTokens);
     });
   });
@@ -90,30 +94,33 @@ describe('TokensController', () => {
       tokensService.getToken.mockResolvedValue(mockToken);
 
       const result = await controller.getToken(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockToken.address,
       );
 
       expect(tokensService.getToken).toHaveBeenCalledWith(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockToken.address,
       );
       expect(result).toEqual(mockToken);
     });
 
-    it('should return null when token is not found', async () => {
+    it('should throw NotFoundException when token is not found', async () => {
       tokensService.getToken.mockResolvedValue(null);
 
-      const result = await controller.getToken(
-        ChainId.ETHEREUM,
+      await expect(controller.getToken(
+        'ethereum',
+        'mainnet',
         '0xnonexistent',
-      );
+      )).rejects.toThrow(NotFoundException);
 
       expect(tokensService.getToken).toHaveBeenCalledWith(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         '0xnonexistent',
       );
-      expect(result).toBeNull();
     });
   });
 });

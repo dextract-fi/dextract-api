@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PricesController } from '@api/controllers/prices.controller';
 import { PricesService } from '@services/prices/prices.service';
-import { ChainId } from '@exchange/constants/chains.constants';
+import { ChainType, NetworkType } from '@common/types/chain.types';
 import { TokenPrice, PriceResponse } from '@exchange/types/price.types';
+import { NotFoundException } from '@nestjs/common';
 
 describe('PricesController', () => {
   let controller: PricesController;
@@ -59,9 +60,9 @@ describe('PricesController', () => {
     it('should return price map for a chain', async () => {
       pricesService.getPrices.mockResolvedValue(mockPriceResponse);
 
-      const result = await controller.getPrices(ChainId.ETHEREUM);
+      const result = await controller.getPrices('ethereum', 'mainnet');
 
-      expect(pricesService.getPrices).toHaveBeenCalledWith(ChainId.ETHEREUM);
+      expect(pricesService.getPrices).toHaveBeenCalledWith('ethereum', 'mainnet');
       expect(result).toEqual(mockPriceResponse);
       expect(Object.keys(result.prices).length).toBe(2);
     });
@@ -80,9 +81,9 @@ describe('PricesController', () => {
 
       pricesService.getPrices.mockResolvedValue(solanaPriceResponse);
 
-      const result = await controller.getPrices(ChainId.SOLANA);
+      const result = await controller.getPrices('solana', 'mainnet');
 
-      expect(pricesService.getPrices).toHaveBeenCalledWith(ChainId.SOLANA);
+      expect(pricesService.getPrices).toHaveBeenCalledWith('solana', 'mainnet');
       expect(result).toEqual(solanaPriceResponse);
     });
   });
@@ -92,30 +93,33 @@ describe('PricesController', () => {
       pricesService.getPrice.mockResolvedValue(mockTokenPrice);
 
       const result = await controller.getPrice(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockTokenPrice.address,
       );
 
       expect(pricesService.getPrice).toHaveBeenCalledWith(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockTokenPrice.address,
       );
       expect(result).toEqual(mockTokenPrice);
     });
 
-    it('should return null when price is not found', async () => {
+    it('should throw NotFoundException when price is not found', async () => {
       pricesService.getPrice.mockResolvedValue(null);
 
-      const result = await controller.getPrice(
-        ChainId.ETHEREUM,
+      await expect(controller.getPrice(
+        'ethereum',
+        'mainnet',
         '0xnonexistent',
-      );
+      )).rejects.toThrow(NotFoundException);
 
       expect(pricesService.getPrice).toHaveBeenCalledWith(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         '0xnonexistent',
       );
-      expect(result).toBeNull();
     });
   });
 });

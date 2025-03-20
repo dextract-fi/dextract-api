@@ -3,6 +3,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CronService } from '@workers/cron/cron.service';
 import { TokensModule } from '@services/tokens/tokens.module';
 import { PricesModule } from '@services/prices/prices.module';
+import { ChainAdapterFactory, createChainAdapterFactory } from '@blockchain/adapters';
 
 @Module({
   imports: [
@@ -10,6 +11,12 @@ import { PricesModule } from '@services/prices/prices.module';
     TokensModule,
     PricesModule,
   ],
-  providers: [CronService],
+  providers: [
+    CronService,
+    {
+      provide: ChainAdapterFactory,
+      useFactory: createChainAdapterFactory,
+    },
+  ],
 })
 export class CronModule {}
