@@ -54,8 +54,8 @@ export class TokensService {
       async () => {
         // First try to find in the cached token list
         const tokens = await this.getTokens(chain, network);
-        const token = tokens.find(t => 
-          chainAdapter.normalizeAddress(t.address) === normalizedTokenId || 
+        const token = tokens.find(t =>
+          chainAdapter.normalizeAddress(t.address) === normalizedTokenId ||
           t.symbol.toUpperCase() === tokenId.toUpperCase()
         );
         
@@ -64,25 +64,21 @@ export class TokensService {
         }
         
         // If not found in the list, try to fetch directly
-        try {
-          const tokenAdapter = this.tokenApiAdapterFactory.getDefaultAdapter();
-          const tokenResponse = await tokenAdapter.getToken(chainId, tokenId);
+        const tokenAdapter = this.tokenApiAdapterFactory.getDefaultAdapter();
+        const tokenResponse = await tokenAdapter.getToken(chainId, tokenId);
+        
+        if (tokenResponse) {
+          // Convert to our token format
+          const newToken = this.convertToToken(tokenResponse);
           
-          if (tokenResponse) {
-            // Convert to our token format
-            const newToken = this.convertToToken(tokenResponse);
-            
-            // Cache the token
-            await this.dataStoreService.set(
-              key,
-              newToken,
-              { namespace: this.NAMESPACE, ttl: null } // No TTL, tokens are stored indefinitely
-            );
-            
-            return newToken;
-          }
-        } catch (error) {
-          this.logger.error(`Failed to fetch token ${tokenId}: ${error.message}`);
+          // Cache the token
+          await this.dataStoreService.set(
+            key,
+            newToken,
+            { namespace: this.NAMESPACE, ttl: null } // No TTL, tokens are stored indefinitely
+          );
+          
+          return newToken;
         }
         
         return null;
@@ -103,66 +99,61 @@ export class TokensService {
     // Get current token list
     const currentTokens = await this.dataStoreService.get<Token[]>(key, { namespace: this.NAMESPACE }) || [];
     
-    try {
-      // Fetch latest token list
-      const tokenList = await this.fetchTokenList(chainId);
-      const newTokens = tokenList.tokens;
+    // Fetch latest token list
+    const tokenList = await this.fetchTokenList(chainId);
+    const newTokens = tokenList.tokens;
+    
+    // Find tokens that don't exist in the current list
+    const chainAdapter = this.getChainAdapter(chainId);
+    const currentAddresses = new Set(currentTokens.map(t => chainAdapter.normalizeAddress(t.address)));
+    
+    const tokensToAdd = newTokens.filter(token =>
+      !currentAddresses.has(chainAdapter.normalizeAddress(token.address))
+    );
+    
+    if (tokensToAdd.length > 0) {
+      this.logger.log(`Found ${tokensToAdd.length} new tokens for ${chain}:${network}`);
       
-      // Find tokens that don't exist in the current list
-      const chainAdapter = this.getChainAdapter(chainId);
-      const currentAddresses = new Set(currentTokens.map(t => chainAdapter.normalizeAddress(t.address)));
+      // Add new tokens to the list
+      const updatedTokens = [...currentTokens, ...tokensToAdd];
       
-      const tokensToAdd = newTokens.filter(token => 
-        !currentAddresses.has(chainAdapter.normalizeAddress(token.address))
+      // Store the updated token list
+      await this.dataStoreService.set(
+        key,
+        updatedTokens,
+        { namespace: this.NAMESPACE, ttl: null } // No TTL, tokens are stored indefinitely
       );
       
-      if (tokensToAdd.length > 0) {
-        this.logger.log(`Found ${tokensToAdd.length} new tokens for ${chain}:${network}`);
+      // Store individual tokens
+      await Promise.all(tokensToAdd.map(async (token) => {
+        const normalizedAddress = chainAdapter.normalizeAddress(token.address);
+        const tokenKey = this.getTokenKey(chainId, normalizedAddress);
         
-        // Add new tokens to the list
-        const updatedTokens = [...currentTokens, ...tokensToAdd];
-        
-        // Store the updated token list
         await this.dataStoreService.set(
-          key, 
-          updatedTokens, 
+          tokenKey,
+          token,
           { namespace: this.NAMESPACE, ttl: null } // No TTL, tokens are stored indefinitely
         );
-        
-        // Store individual tokens
-        await Promise.all(tokensToAdd.map(async (token) => {
-          const normalizedAddress = chainAdapter.normalizeAddress(token.address);
-          const tokenKey = this.getTokenKey(chainId, normalizedAddress);
-          
-          await this.dataStoreService.set(
-            tokenKey,
-            token,
-            { namespace: this.NAMESPACE, ttl: null } // No TTL, tokens are stored indefinitely
-          );
-        }));
-        
-        // Update last sync timestamp
-        await this.dataStoreService.set(
-          this.getLastSyncKey(chainId),
-          Date.now(),
-          { namespace: this.NAMESPACE, ttl: null }
-        );
-        
-        return updatedTokens;
-      } else {
-        this.logger.log(`No new tokens found for ${chain}:${network}`);
-        
-        // Update last sync timestamp
-        await this.dataStoreService.set(
-          this.getLastSyncKey(chainId),
-          Date.now(),
-          { namespace: this.NAMESPACE, ttl: null }
-        );
-        
-        return currentTokens;
-      }
-    } catch (error) {
-      this.logger.error(`Failed to check for new tokens: ${error.message}`);
+      }));
+      
+      // Update last sync timestamp
+      await this.dataStoreService.set(
+        this.getLastSyncKey(chainId),
+        Date.now(),
+        { namespace: this.NAMESPACE, ttl: null }
+      );
+      
+      return updatedTokens;
+    } else {
+      this.logger.log(`No new tokens found for ${chain}:${network}`);
+      
+      // Update last sync timestamp
+      await this.dataStoreService.set(
+        this.getLastSyncKey(chainId),
+        Date.now(),
+        { namespace: this.NAMESPACE, ttl: null }
+      );
+      
       return currentTokens;
     }
   }
@@ -172,31 +163,19 @@ export class TokensService {
    * @param chainId The chain identifier
    */
   private async fetchTokenList(chainId: ChainIdentifier): Promise<TokenList> {
-    try {
-      const tokenAdapter = this.tokenApiAdapterFactory.getDefaultAdapter();
-      const tokenListResponse = await tokenAdapter.getTokenList(chainId);
-      
-      // Convert to our token format
-      const tokens = tokenListResponse.tokens.map(this.convertToToken);
-      
-      return {
-        name: tokenListResponse.name,
-        logoURI: tokenListResponse.logoURI,
-        tokens,
-        timestamp: tokenListResponse.timestamp,
-        version: tokenListResponse.version,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to fetch token list: ${error.message}`);
-      
-      // Return empty list as fallback
-      return {
-        name: `${chainId.chain}:${chainId.network} Tokens`,
-        tokens: [],
-        timestamp: new Date().toISOString(),
-        version: { major: 1, minor: 0, patch: 0 },
-      };
-    }
+    const tokenAdapter = this.tokenApiAdapterFactory.getDefaultAdapter();
+    const tokenListResponse = await tokenAdapter.getTokenList(chainId);
+    
+    // Convert to our token format
+    const tokens = tokenListResponse.tokens.map(this.convertToToken);
+    
+    return {
+      name: tokenListResponse.name,
+      logoURI: tokenListResponse.logoURI,
+      tokens,
+      timestamp: tokenListResponse.timestamp,
+      version: tokenListResponse.version,
+    };
   }
 
   /**

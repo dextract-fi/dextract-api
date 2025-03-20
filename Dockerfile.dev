@@ -1,6 +1,8 @@
 FROM node:23-slim
 
 # Install dependencies
+RUN apt-get update && apt-get install -y libatomic1
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
@@ -14,8 +16,8 @@ RUN pnpm install
 # Copy the rest of the application
 COPY . .
 
-# Expose Wrangler port
+# Expose NestJS port
 EXPOSE 8787
 
 # Default command (can be overridden in docker-compose)
-CMD ["npx", "wrangler", "dev"]
+CMD ["npx", "wrangler", "dev", "--local"]

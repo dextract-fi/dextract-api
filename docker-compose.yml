@@ -1,5 +1,5 @@
 services:
-  # Main API service using Miniflare
+  # Main API service using NestJS
   dextract-api:
     build:
       context: .
@@ -9,14 +9,13 @@ services:
     volumes:
       - ./:/app
       - /app/node_modules
-      - ./.miniflare:/app/.miniflare  # Persist Miniflare data
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080}
       - DEBUG=${DEBUG:-true}
       - COINGECKO_API_KEY=${COINGECKO_API_KEY:-}
       - COINMARKETCAP_API_KEY=${COINMARKETCAP_API_KEY:-}
-    command: npx wrangler dev
+    command: npx wrangler dev --local
     
   # Optional monitoring service
   monitoring:
