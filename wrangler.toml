@@ -1,6 +1,6 @@
 # Cloudflare Workers configuration for Dextract-fi API
 name = "dextract-api"
-main = "dist/main.js"
+main = "dist/src/main.js"
 compatibility_date = "2023-12-01"
 compatibility_flags = ["nodejs_compat"]  # Moved to proper section
 
