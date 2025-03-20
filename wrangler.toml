@@ -1,0 +1,60 @@
+# Cloudflare Workers configuration for Dextract-fi API
+
+name = "dextract-api"
+main = "dist/main.js"
+compatibility_date = "2023-12-01"
+
+# Set the Node.js compatibility flag
+nodejs_compat = true
+
+# Configure KV namespace binding
+kv_namespaces = [
+  { binding = "DEXTRACT_KV", id = "YOUR_KV_NAMESPACE_ID_HERE", preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID_HERE" }
+]
+
+# Configure environment variables
+[vars]
+NODE_ENV = "production"
+
+# Configure routes
+[routes]
+pattern = "api.dextract.fi/*"
+zone_name = "dextract.fi"
+
+# Configure build
+[build]
+command = "npm run build"
+watch_dir = "src"
+
+# Configure dev environment
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Configure production environment
+[env.production]
+workers_dev = false
+route = "api.dextract.fi/*"
+zone_id = "YOUR_ZONE_ID_HERE"
+
+# Configure staging environment
+[env.staging]
+workers_dev = true
+name = "dextract-api-staging"
+
+# Configure CORS
+[env.production.vars]
+ALLOWED_ORIGINS = "https://dextract.fi,https://app.dextract.fi"
+
+# Configure API keys for external services
+# These should be set using Cloudflare's secret management
+# wrangler secret put COINGECKO_API_KEY
+# wrangler secret put COINMARKETCAP_API_KEY
+
+# Configure security headers
+[env.production.security_headers]
+Content-Security-Policy = "default-src 'self'; script-src 'self'; connect-src 'self'"
+X-Content-Type-Options = "nosniff"
+X-Frame-Options = "DENY"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Permissions-Policy = "camera=(), microphone=(), geolocation=()"

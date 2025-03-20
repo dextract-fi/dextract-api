@@ -1,3 +1,5 @@
+import { ChainType, NetworkType } from '@common/types/chain.types';
+
 export interface Token {
   address: string;
   symbol: string;
@@ -5,7 +7,8 @@ export interface Token {
   decimals: number;
   logoURI?: string;
   tags?: string[];
-  chainId: number;
+  chainType: ChainType;
+  networkType: NetworkType;
 }
 
 export interface TokenList {

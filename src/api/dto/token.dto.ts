@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ChainType, NetworkType } from '@common/types/chain.types';
 
 export class TokenDto {
   @ApiProperty({ description: 'Token address' })
@@ -19,6 +20,12 @@ export class TokenDto {
   @ApiProperty({ description: 'Token tags', type: [String], required: false })
   tags?: string[];
 
-  @ApiProperty({ description: 'Chain ID of the token' })
-  chainId: number;
+  @ApiProperty({ description: 'Legacy chain ID of the token', required: false })
+  chainId?: number;
+
+  @ApiProperty({ description: 'Chain type of the token', enum: ['ethereum', 'solana', 'bsc', 'polygon', 'arbitrum', 'optimism', 'avalanche'] })
+  chainType: ChainType;
+
+  @ApiProperty({ description: 'Network type of the token', enum: ['mainnet', 'testnet', 'devnet', 'localnet'] })
+  networkType: NetworkType;
 }

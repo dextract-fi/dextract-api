@@ -1,10 +1,9 @@
-// src/workers/cron/cron.service.ts
-
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ChainId } from '@exchange/constants/chains.constants';
 import { TokensService } from '@services/tokens/tokens.service';
 import { PricesService } from '@services/prices/prices.service';
+import { ChainAdapterFactory } from '@blockchain/adapters';
+import { ChainType, NetworkType } from '@common/types/chain.types';
 
 @Injectable()
 export class CronService {
@@ -13,37 +12,78 @@ export class CronService {
   constructor(
     private readonly tokensService: TokensService,
     private readonly pricesService: PricesService,
+    private readonly chainAdapterFactory: ChainAdapterFactory,
   ) {}
 
+  /**
+   * Check for new tokens every day at midnight
+   */
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async refreshTokens() {
-    this.logger.log('Refreshing token lists');
+  async checkForNewTokens() {
+    this.logger.log('Checking for new tokens');
     
     try {
-      const chainIds = Object.values(ChainId).filter(id => typeof id === 'number') as number[];
+      // Get all supported chains and networks
+      const chains = this.chainAdapterFactory.getSupportedChains();
       
-      for (const chainId of chainIds) {
-        await this.tokensService.refreshTokens(chainId as ChainId);
-        this.logger.log(`Refreshed tokens for chain ${chainId}`);
+      for (const chain of chains) {
+        const networks = this.chainAdapterFactory.getSupportedNetworks(chain);
+        
+        for (const network of networks) {
+          // Skip testnets and devnets for token checks
+          if (network === 'mainnet') {
+            await this.tokensService.checkForNewTokens(chain, network);
+            this.logger.log(`Checked for new tokens on ${chain}:${network}`);
+          }
+        }
       }
     } catch (error) {
-      this.logger.error(`Error refreshing tokens: ${error.message}`);
+      this.logger.error(`Error checking for new tokens: ${error.message}`);
     }
   }
 
+  /**
+   * Refresh token prices every 5 minutes
+   */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async refreshPrices() {
     this.logger.log('Refreshing token prices');
     
     try {
-      const chainIds = Object.values(ChainId).filter(id => typeof id === 'number') as number[];
+      // Get all supported chains and networks
+      const chains = this.chainAdapterFactory.getSupportedChains();
       
-      for (const chainId of chainIds) {
-        await this.pricesService.refreshPrices(chainId as ChainId);
-        this.logger.log(`Refreshed prices for chain ${chainId}`);
+      for (const chain of chains) {
+        const networks = this.chainAdapterFactory.getSupportedNetworks(chain);
+        
+        for (const network of networks) {
+          // Skip testnets and devnets for price updates
+          if (network === 'mainnet') {
+            await this.pricesService.refreshPrices(chain, network);
+            this.logger.log(`Refreshed prices for ${chain}:${network}`);
+          }
+        }
       }
     } catch (error) {
       this.logger.error(`Error refreshing prices: ${error.message}`);
     }
+  }
+
+  /**
+   * Get supported chain-network pairs
+   */
+  private getSupportedChainNetworks(): Array<{ chain: ChainType, network: NetworkType }> {
+    const result: Array<{ chain: ChainType, network: NetworkType }> = [];
+    const chains = this.chainAdapterFactory.getSupportedChains();
+    
+    for (const chain of chains) {
+      const networks = this.chainAdapterFactory.getSupportedNetworks(chain);
+      
+      for (const network of networks) {
+        result.push({ chain, network });
+      }
+    }
+    
+    return result;
   }
 }

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SwapsController } from '@api/controllers/swaps.controller';
 import { SwapsService } from '@services/swaps/swaps.service';
-import { ChainId } from '@exchange/constants/chains.constants';
+import { ChainType, NetworkType } from '@common/types/chain.types';
 import { SwapQuote, SwapRoute } from '@exchange/types/swap.types';
 import { SwapQuoteQueryDto } from '@api/dto/swap-quote.query.dto';
 
@@ -80,12 +80,14 @@ describe('SwapsController', () => {
       );
 
       const result = await controller.getQuote(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         queryDto
       );
 
       expect(swapsService.getQuote).toHaveBeenCalledWith(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockSourceTokenAddress,
         mockDestTokenAddress,
         mockAmount,
@@ -123,12 +125,14 @@ describe('SwapsController', () => {
       );
 
       const result = await controller.getQuote(
-        ChainId.SOLANA,
+        'solana',
+        'mainnet',
         queryDto
       );
 
       expect(swapsService.getQuote).toHaveBeenCalledWith(
-        ChainId.SOLANA,
+        'solana',
+        'mainnet',
         solanaMockSourceTokenAddress,
         solanaMockDestTokenAddress,
         mockAmount,
@@ -147,7 +151,8 @@ describe('SwapsController', () => {
       );
 
       await expect(controller.getQuote(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         queryDto
       )).rejects.toThrow(errorMessage);
     });
@@ -172,12 +177,14 @@ describe('SwapsController', () => {
       );
 
       const result = await controller.getQuote(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         queryDto
       );
 
       expect(swapsService.getQuote).toHaveBeenCalledWith(
-        ChainId.ETHEREUM,
+        'ethereum',
+        'mainnet',
         mockSourceTokenAddress,
         mockDestTokenAddress,
         smallAmount,
