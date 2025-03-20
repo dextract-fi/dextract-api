@@ -1,7 +1,6 @@
 import { Module, Global, DynamicModule } from '@nestjs/common';
 import { DataStoreService } from '@datastore/datastore.service';
 import { CloudflareKVStore } from '@datastore/providers/cloudflare-kv.store';
-import { MemoryStore } from '@datastore/providers/memory.store';
 import { DATA_STORE } from '@datastore/datastore.constants';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -16,15 +15,9 @@ export class DataStoreModule {
         {
           provide: DATA_STORE,
           useFactory: (configService: ConfigService) => {
-            const nodeEnv = configService.get<string>('nodeEnv', 'development');
-            
-            // Use in-memory store for development and testing
-            if (nodeEnv === 'development' || nodeEnv === 'test') {
-              return new MemoryStore();
-            }
-            
-            // Use Cloudflare KV for production
-            return new CloudflareKVStore();
+            // Always use CloudflareKVStore, which works with both Miniflare locally
+            // and Cloudflare Workers in production
+            return new CloudflareKVStore(configService);
           },
           inject: [ConfigService],
         },

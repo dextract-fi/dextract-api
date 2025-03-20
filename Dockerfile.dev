@@ -1,27 +1,21 @@
-FROM node:23-alpine
+FROM node:23-slim
 
-# Set trusted certificates if needed
-# RUN update-ca-certificates
-
-# Skip Python and build dependencies for now since we're having issues
-# We'll focus on getting the JS dependencies working first
-
-# Enable corepack and install pnpm
+# Install dependencies
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy package files first (for better caching)
+# Copy package files
 COPY package.json ./
 
-# Install dependencies without frozen lockfile to allow resolution flexibility
+# Install dependencies
 RUN pnpm install
 
 # Copy the rest of the application
 COPY . .
 
-# Expose API port
-EXPOSE 3001
+# Expose Wrangler port
+EXPOSE 8787
 
-# Start the application
-CMD ["pnpm", "start:dev"]
+# Default command (can be overridden in docker-compose)
+CMD ["npx", "wrangler", "dev"]

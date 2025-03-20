@@ -13,11 +13,13 @@ A chain-agnostic API for token information and prices, designed to be deployed t
 
 - **Chain-Agnostic Architecture**: Support for multiple blockchains (Ethereum, Solana, BSC, Polygon, Arbitrum, Optimism, Avalanche) and networks (mainnet, testnet, devnet, localnet)
 - **Flexible API Integration**: Adapter pattern for multiple token and price data providers (CoinGecko, CoinMarketCap, etc.)
-- **Efficient Caching**: Intelligent caching with Cloudflare KV and in-memory store with configurable TTL strategies
+- **Efficient Caching**: Intelligent caching with Cloudflare KV with configurable TTL strategies
 - **Token List Management**: Daily checks for new tokens with indefinite storage
 - **Price Updates**: Frequent price updates with configurable TTL (5-minute default)
 - **Swap Quotes**: Real-time swap quotes across multiple DEX providers
 - **Secure Deployment**: Ready for deployment to Cloudflare Workers with proper security headers
+- **Local Development**: Docker Compose setup with Miniflare for local Cloudflare simulation
+- **Monitoring**: Prometheus and Grafana for metrics and monitoring
 
 ## Getting Started
 
@@ -25,18 +27,62 @@ A chain-agnostic API for token information and prices, designed to be deployed t
 
 - Node.js 18+
 - pnpm 10+
-- Cloudflare account (for deployment)
+- Docker and Docker Compose (for local development)
+- Cloudflare account (for production deployment)
 
-### Installation
+### Initial Setup
+
+Run the setup script to make all scripts executable and create necessary directories:
+
+```bash
+# Make the setup script executable
+chmod +x scripts/setup.sh
+
+# Run the setup script
+./scripts/setup.sh
+```
+
+### Configuration
+
+1. Copy the example environment files:
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. Update `.env.local` with your API keys and configuration
+
+3. For Cloudflare deployment, create a KV namespace in your Cloudflare Workers dashboard and add the ID to your `.env.local` file:
+   ```
+   KV_NAMESPACE_ID=your_kv_namespace_id
+   KV_PREVIEW_NAMESPACE_ID=your_preview_kv_namespace_id
+   ```
+
+### Local Development with Docker Compose
+
+The project includes a Docker Compose setup with Miniflare for local development:
+
+```bash
+# Start the Docker Compose services
+./scripts/docker/start.sh
+
+# View logs
+./scripts/docker/logs.sh
+
+# Stop the services
+./scripts/docker/stop.sh
+
+# Rebuild the services
+./scripts/docker/rebuild.sh
+```
+
+### Traditional Development
+
+If you prefer not to use Docker:
 
 ```bash
 # Install dependencies
 pnpm install
-```
 
-### Development
-
-```bash
 # Start the development server
 pnpm start:dev
 
@@ -44,25 +90,20 @@ pnpm start:dev
 pnpm test
 ```
 
-### Cloudflare Workers Setup
-
-1. Create a KV namespace in your Cloudflare Workers dashboard
-2. Update the `wrangler.toml` file with your KV namespace ID and zone ID
-3. Set up your API keys as secrets:
+### Cloudflare Workers Deployment
 
 ```bash
-npx wrangler secret put COINGECKO_API_KEY
-npx wrangler secret put COINMARKETCAP_API_KEY
-```
+# Deploy to development environment
+./scripts/cloudflare/deploy.sh development
 
-### Deployment
+# Deploy to production environment
+./scripts/cloudflare/deploy.sh production
 
-```bash
-# Deploy to staging
-pnpm deploy:staging
+# Manage secrets
+./scripts/cloudflare/secrets.sh production set COINGECKO_API_KEY your_api_key
 
-# Deploy to production
-pnpm deploy:production
+# Extract debug information
+./scripts/cloudflare/debug.sh production
 ```
 
 ## API Endpoints
@@ -120,10 +161,22 @@ Different data types have different caching strategies:
 
 ## Configuration
 
+### Environment Files
+
+- `.env.development` - Development environment configuration
+- `.env.production` - Production environment configuration
+- `.env.local` - Local overrides (gitignored)
+
 ### Environment Variables
 
 - `NODE_ENV`: Environment (development, production, test)
+- `API_PORT`: Port for the API server (default: 8787)
 - `ALLOWED_ORIGINS`: Comma-separated list of allowed origins for CORS
+- `DEBUG`: Enable debug mode (true/false)
+- `KV_NAMESPACE_ID`: Cloudflare KV namespace ID
+- `KV_PREVIEW_NAMESPACE_ID`: Cloudflare KV preview namespace ID
+- `COINGECKO_API_KEY`: CoinGecko API key
+- `COINMARKETCAP_API_KEY`: CoinMarketCap API key
 
 ### Cloudflare KV
 
@@ -131,6 +184,14 @@ The API uses Cloudflare KV for caching with the following namespaces:
 
 - `tokens`: Token information with indefinite TTL
 - `prices`: Price information with 5-minute TTL
+
+## Docker Compose Services
+
+The Docker Compose setup includes the following services:
+
+- **dextract-api**: The main API service using Miniflare for Cloudflare simulation
+- **monitoring**: Grafana for visualization of metrics
+- **prometheus**: Prometheus for metrics collection
 
 ## License
 

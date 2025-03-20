@@ -1,0 +1,38 @@
+# Cloudflare Workers configuration for Dextract-fi API
+name = "dextract-api"
+main = "dist/src/main.js"
+compatibility_date = "2023-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Configure build
+[build]
+command = "pnpm run build"
+watch_dir = "src"
+
+# Configure dev environment
+[dev]
+port = 8787
+local_protocol = "http"
+
+# KV Namespace Bindings
+[[kv_namespaces]]
+binding = "DEXTRACT_KV"
+id = "${KV_NAMESPACE_ID}"
+preview_id = "${KV_PREVIEW_NAMESPACE_ID}"
+
+# Development environment
+[env.development]
+workers_dev = true
+name = "dextract-api-dev"
+vars = { NODE_ENV = "development", ALLOWED_ORIGINS = "http://localhost:3000,https://dev.dextract.xyz", DEBUG = "true" }
+
+# Production environment
+[env.production]
+workers_dev = false
+name = "dextract-api-prd"
+vars = { NODE_ENV = "production", ALLOWED_ORIGINS = "https://dextract.xyz,https://app.dextract.xyz", DEBUG = "false" }
+
+# Routes configuration
+[[routes]]
+pattern = "api.dextract.xyz/*"
+zone_name = "dextract.xyz"

@@ -1,0 +1,41 @@
+services:
+  # Main API service using Miniflare
+  dextract-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${API_PORT:-8787}:8787"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - ./.miniflare:/app/.miniflare  # Persist Miniflare data
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      - DEBUG=${DEBUG:-true}
+      - COINGECKO_API_KEY=${COINGECKO_API_KEY:-}
+      - COINMARKETCAP_API_KEY=${COINMARKETCAP_API_KEY:-}
+    command: npx wrangler dev
+    
+  # Optional monitoring service
+  monitoring:
+    image: grafana/grafana:latest
+    ports:
+      - "${MONITORING_PORT:-3000}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+
+volumes:
+  grafana-data:
+  prometheus-data:
