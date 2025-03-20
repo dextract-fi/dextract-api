@@ -1,25 +1,8 @@
 # Cloudflare Workers configuration for Dextract-fi API
-
 name = "dextract-api"
 main = "dist/main.js"
 compatibility_date = "2023-12-01"
-
-# Set the Node.js compatibility flag
-nodejs_compat = true
-
-# Configure KV namespace binding
-kv_namespaces = [
-  { binding = "DEXTRACT_KV", id = "YOUR_KV_NAMESPACE_ID_HERE", preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID_HERE" }
-]
-
-# Configure environment variables
-[vars]
-NODE_ENV = "production"
-
-# Configure routes
-[routes]
-pattern = "api.dextract.fi/*"
-zone_name = "dextract.fi"
+compatibility_flags = ["nodejs_compat"]  # Moved to proper section
 
 # Configure build
 [build]
@@ -31,30 +14,32 @@ watch_dir = "src"
 port = 8787
 local_protocol = "http"
 
-# Configure production environment
+# Production environment
 [env.production]
 workers_dev = false
-route = "api.dextract.fi/*"
-zone_id = "YOUR_ZONE_ID_HERE"
+name = "dextract-api-prod"
 
-# Configure staging environment
+# KV namespace binding (ID should be managed via secrets)
+[[kv_namespaces]]
+binding = "DEXTRACT_KV"
+id = "7757facfc88e430b9ee0fc7dd644b150"  # Replace with secret reference
+
+# Routes configuration
+[[routes]]
+pattern = "api.dextract.xyz/*"
+zone_name = "dextract.fi"
+
+# Environment variables
+[vars]
+NODE_ENV = "production"
+ALLOWED_ORIGINS = "https://dextract.xyz,https://app.dextract.xyz"
+
+# Staging environment
 [env.staging]
 workers_dev = true
 name = "dextract-api-staging"
 
-# Configure CORS
-[env.production.vars]
-ALLOWED_ORIGINS = "https://dextract.fi,https://app.dextract.fi"
-
-# Configure API keys for external services
-# These should be set using Cloudflare's secret management
-# wrangler secret put COINGECKO_API_KEY
-# wrangler secret put COINMARKETCAP_API_KEY
-
-# Configure security headers
-[env.production.security_headers]
-Content-Security-Policy = "default-src 'self'; script-src 'self'; connect-src 'self'"
-X-Content-Type-Options = "nosniff"
-X-Frame-Options = "DENY"
-Referrer-Policy = "strict-origin-when-cross-origin"
-Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+# KV namespace for staging (use separate namespace)
+[[kv_namespaces]]
+binding = "DEXTRACT_KV"
+id = "staging_namespace_id"  # Replace with secret reference

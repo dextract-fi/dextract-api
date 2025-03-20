@@ -81,13 +81,6 @@ pnpm deploy:production
 
 - `GET /api/swaps/quote/:chain/:network?fromToken=&toToken=&amount=` - Get swap quote for a token pair
 
-### Legacy Endpoints (Deprecated)
-
-- `GET /api/tokens/legacy/:chainId` - Get all tokens for a specific chain ID
-- `GET /api/tokens/legacy/:chainId/:address` - Get a specific token by chain ID and address
-- `GET /api/prices/legacy/:chainId` - Get all token prices for a specific chain ID
-- `GET /api/prices/legacy/:chainId/:address` - Get price for a specific token by chain ID and address
-
 ## Supported Chains and Networks
 
 | Chain | Networks |
