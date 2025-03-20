@@ -1,7 +1,7 @@
-import { Controller, Get, Param, Query, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { SwapsService } from '@services/swaps/swaps.service';
 import { ChainType, NetworkType } from '@common/types/chain.types';
-import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SwapQuoteDto } from '@api/dto/swap.dto';
 import { SwapQuoteQueryDto } from '@api/dto/swap-quote.query.dto';
 

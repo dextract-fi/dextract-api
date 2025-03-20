@@ -1,6 +1,8 @@
 # Architecture Flow and Responsibilities
 
-This document explains the flow of responsibilities and data in the improved architecture for the Dextract-fi API.
+*[Back to README](../README.md) | [API Documentation](./api-docs.md) | [Architecture Diagrams](./architecture-diagrams.md) | [Implementation Summary](./implementation-summary.md)*
+
+This document explains the flow of responsibilities and data in the architecture for the Dextract-fi API.
 
 ## Component Responsibilities
 
@@ -9,18 +11,21 @@ This document explains the flow of responsibilities and data in the improved arc
 - Route requests to appropriate services
 - Format and return responses
 - Apply security policies (CORS, rate limiting)
+- Provide backward compatibility through legacy endpoints
 
 ### 2. Service Layer
 - Orchestrate business logic
 - Determine which data source to use (cache or external API)
 - Handle error cases and provide fallbacks
 - Manage data transformation
+- Coordinate between different adapters
 
 ### 3. External API Adapter Framework
 - Abstract away external API specifics
 - Handle authentication with external APIs
 - Transform external API responses to internal format
 - Implement retry logic and error handling
+- Support multiple providers (CoinGecko, CoinMarketCap, etc.)
 
 ### 4. Chain-Network Adapters
 - Provide chain and network specific functionality
@@ -31,9 +36,10 @@ This document explains the flow of responsibilities and data in the improved arc
 
 ### 5. Datastore Service
 - Provide a unified interface to the storage layer
-- Handle caching logic
+- Handle caching logic with different TTL strategies
 - Manage TTL and expiration
-- Support different storage backends
+- Support different storage backends (Memory, Cloudflare KV)
+- Implement efficient cache invalidation
 
 ### 6. Cron Service
 - Schedule and execute periodic tasks
@@ -72,6 +78,32 @@ sequenceDiagram
     
     Service->>Controller: Return Result
     Controller->>Client: HTTP Response
+```
+
+### Adapter Pattern Implementation
+
+```mermaid
+flowchart TD
+    Service[Service Layer] --> Factory[Adapter Factory]
+    Factory --> A1[CoinGecko Adapter]
+    Factory --> A2[CoinMarketCap Adapter]
+    Factory --> A3[Other Adapters...]
+    
+    A1 --> BaseAdapter[Base API Adapter]
+    A2 --> BaseAdapter
+    A3 --> BaseAdapter
+    
+    BaseAdapter --> HttpService[HTTP Service]
+    HttpService --> ExternalAPIs[External APIs]
+    
+    Service --> ChainFactory[Chain Adapter Factory]
+    ChainFactory --> C1[Ethereum Adapter]
+    ChainFactory --> C2[Solana Adapter]
+    ChainFactory --> C3[Other Chain Adapters...]
+    
+    C1 --> BaseChain[Base Chain Adapter]
+    C2 --> BaseChain
+    C3 --> BaseChain
 ```
 
 ### Caching Mechanism
@@ -193,8 +225,26 @@ sequenceDiagram
    - Store fetched data in cache with short TTL
    - `DataStoreService.set("prices:solana:mainnet:SOL", priceData, { ttl: 5 * 60 * 1000 })`
 7. **Response**:
-   - Return data to controller (or placeholder 9.99 if configured)
+   - Return data to controller
    - Controller formats and returns HTTP response
+
+### 4. Swap Quote Request Flow
+
+1. **Client Request**: Frontend requests swap quote for USDC to ETH on Ethereum mainnet
+2. **Controller Processing**:
+   - `SwapsController` receives request
+   - Validates parameters
+   - Calls `SwapsService.getQuote("ethereum", "mainnet", "USDC", "ETH", "1000000000")`
+3. **Service Layer**:
+   - Normalizes parameters
+   - Gets token information for both tokens
+4. **External API Request**:
+   - Get appropriate adapter via `SwapApiAdapterFactory.getAdapter("1inch")`
+   - Fetch quote via adapter: `adapter.getSwapQuote(...)`
+   - Adapter handles API-specific details and transforms response
+5. **Response**:
+   - Return quote data to controller
+   - Controller formats and returns HTTP response with best route and alternatives
 
 ## Key Benefits of This Architecture
 
@@ -221,6 +271,16 @@ sequenceDiagram
    - Easier to understand and extend
 
 6. **Multi-Chain Support**:
-   - Support for multiple chains (Solana, Ethereum, etc.)
+   - Support for multiple chains (Ethereum, Solana, BSC, etc.)
    - Support for multiple networks per chain (mainnet, testnet, etc.)
    - Chain-agnostic API design
+
+## Cloudflare Workers Deployment
+
+The API is designed to be deployed to Cloudflare Workers, with the following configuration:
+
+1. **KV Namespace**: Used for caching token and price data
+2. **Environment Variables**: Configured in wrangler.toml
+3. **Secrets**: API keys stored securely using Cloudflare's secret management
+4. **Security Headers**: Configured for secure frontend access
+5. **CORS**: Configured to allow access from specified origins
